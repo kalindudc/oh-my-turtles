@@ -13,7 +13,7 @@ local function get_latest_url(url_path)
 end
 
 local function get_version()
-  return http.get(VERSION_FILE_URL_PATH).readAll():gsub("\n$", "")
+  return http.get(get_latest_url(VERSION_FILE_URL_PATH)).readAll():gsub("\n$", "")
 end
 
 local current_version = get_version()
