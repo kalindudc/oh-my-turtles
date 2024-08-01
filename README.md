@@ -1,2 +1,2 @@
-# oh-my-turtles
+# Oh-My-Turtles
 Manage your turtles 🐢

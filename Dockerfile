@@ -7,7 +7,6 @@ WORKDIR /app
 COPY client/package.json client/yarn.lock client/tsconfig.json ./client/
 RUN cd client && yarn install
 COPY client/ ./client/
-RUN cd client && yarn build
 
 # Copy the server files and install dependencies
 COPY package.json yarn.lock tsconfig.json ./
