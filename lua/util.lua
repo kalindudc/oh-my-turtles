@@ -30,7 +30,14 @@ function _M.file_exists(path)
 end
 
 function _M.get_latest_commit_sha()
-  local repo_updates = http.get(OH_MY_TURTLES_API_URL).readAll()
+  local resp = http.get(OH_MY_TURTLES_API_URL)
+  while not resp do
+    print("Failed to get latest commit sha. Retrying after 1 second...")
+    os.sleep(1)
+    resp = http.get(OH_MY_TURTLES_API_URL)
+  end
+
+  local repo_updates = resp.readAll()
   return textutils.unserializeJSON(repo_updates)[1]["sha"]
 end
 
