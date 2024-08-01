@@ -4,6 +4,7 @@ local VERSION_FILE_URL = "https://raw.githubusercontent.com/kalindudc/oh-my-turt
 local current_version = http.get(VERSION_FILE_URL).readAll():gsub("\n$", "")
 
 while true do
+  print ("Current version: " .. current_version)
   print("Checking for updates...")
   local new_version = http.get(VERSION_FILE_URL).readAll():gsub("\n$", "")
   if new_version ~= current_version then
