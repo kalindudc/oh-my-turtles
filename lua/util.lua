@@ -3,7 +3,12 @@ local OH_MY_TURTLES_REPO_URL = "https://raw.githubusercontent.com/kalindudc/oh-m
 
 local STARTUP_LUA_PATH = "/startup.lua"
 local STARTUP_LUA_PATH_ON_DISK = "/disk/startup.lua"
+
 local UPDATE_LUA_PATH = "/update.lua"
+
+local UTIL_LUA_URL_PATH = "/lua/util.lua"
+local UTIL_LUA_PATH = "/util.lua"
+
 
 
 local _M = {
@@ -11,7 +16,8 @@ local _M = {
   OH_MY_TURTLES_REPO_URL = OH_MY_TURTLES_REPO_URL,
   STARTUP_LUA_PATH = STARTUP_LUA_PATH,
   STARTUP_LUA_PATH_ON_DISK = STARTUP_LUA_PATH_ON_DISK,
-  UPDATE_LUA_PATH = UPDATE_LUA_PATH
+  UPDATE_LUA_PATH = UPDATE_LUA_PATH,
+  UTIL_LUA_PATH = UTIL_LUA_PATH,
 }
 
 function _M.file_exists(path)
