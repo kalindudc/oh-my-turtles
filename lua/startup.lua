@@ -16,7 +16,7 @@ end
 
 -- check if entrypoint_on_disc exists and if so copy it to entrypoint
 if not file_exists(STARTUP_LUA_PATH) and file_exists(STARTUP_LUA_PATH_ON_DISK) then
-  print("startup.lua does not exist... Copying from disk")
+  print("startup.lua does not exist... Copying from disk\n")
   fs.copy(STARTUP_LUA_PATH_ON_DISK, STARTUP_LUA_PATH)
 end
 

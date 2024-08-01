@@ -12,10 +12,13 @@ local function file_exists(path)
 end
 
 if file_exists(MAIN_LUA_PATH) then
-  print("main.lua exists... Updating")
+  print("main.lua exists... Updating\n")
   shell.run("rm " .. MAIN_LUA_PATH)
 end
 
 print("Downloading main.lua")
 shell.run("wget " .. MAIN_LUA_URL .. " " .. MAIN_LUA_PATH)
+
+print("Rebooting in 5 seconds")
+os.sleep(5)
 shell.run("reboot")
