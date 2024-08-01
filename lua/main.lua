@@ -4,10 +4,8 @@ local OH_MY_TURTLES_REPO_URL = "https://raw.githubusercontent.com/kalindudc/oh-m
 local VERSION_FILE_URL_PATH = "/lua/VERSION"
 
 local function get_latest_url(url_path)
-  print("Getting latest commit sha...")
   local repo_updates = http.get(OH_MY_TURTLES_API_URL).readAll()
   local latest_commit_sha = textutils.unserializeJSON(repo_updates)[1]["sha"]
-  print("Latest commit sha: " .. latest_commit_sha)
 
   return OH_MY_TURTLES_REPO_URL .. latest_commit_sha .. url_path
 end
