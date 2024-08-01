@@ -34,5 +34,5 @@ while true do
     load_new_version(new_version)
   end
 
-  os.sleep(1)
+  os.sleep(60)
 end

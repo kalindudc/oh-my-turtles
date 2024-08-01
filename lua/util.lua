@@ -32,8 +32,8 @@ end
 function _M.get_latest_commit_sha()
   local resp = http.get(OH_MY_TURTLES_API_URL)
   while not resp do
-    print("Failed to get latest commit sha. Retrying after 1 second...")
-    os.sleep(1)
+    print("Failed to get latest commit sha. Retrying after 2 minutes...")
+    os.sleep(120)
     resp = http.get(OH_MY_TURTLES_API_URL)
   end
 
