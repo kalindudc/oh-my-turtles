@@ -1,0 +1,26 @@
+{
+  "name": "Oh-My-Turtles",
+  "version": "0.0.1",
+  "description": "Mange your turtles",
+  "main": "src/index.ts",
+  "repository": "https://github.com/kalindudc/oh-my-turtles.git",
+  "author": "Kalindu De Costa <kalinduk.decosta@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "start": "node ./bin/index.js",
+    "dev": "ts-node ./src/index.ts"
+  },
+  "dependencies": {
+    "@types/node": "^22.0.2",
+    "express": "^4.19.2",
+    "typescript": "^5.5.4",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/ws": "^8.5.12",
+    "ts-node": "^10.9.2"
+  }
+}
