@@ -3,13 +3,7 @@ local UTIL_LUA_URL = "https://raw.githubusercontent.com/kalindudc/oh-my-turtles/
 local UTIL_LUA_PATH = "/util.lua"
 
 local function file_exists(path)
-  local file = io.open(path, "r")
-  if file then
-    io.close(file)
-    return true
-  else
-    return false
-  end
+  return fs.exists(path)
 end
 
 if not file_exists(UTIL_LUA_PATH) then

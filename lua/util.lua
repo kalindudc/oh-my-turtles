@@ -9,7 +9,9 @@ local UPDATE_LUA_PATH = "/update.lua"
 local UTIL_LUA_URL_PATH = "/lua/util.lua"
 local UTIL_LUA_PATH = "/util.lua"
 
+local VERSION_FILE_PATH = "/VERSION"
 
+local MAIN_LUA_PATH = "/main.lua"
 
 local _M = {
   OH_MY_TURTLES_API_URL = OH_MY_TURTLES_API_URL,
@@ -17,17 +19,14 @@ local _M = {
   STARTUP_LUA_PATH = STARTUP_LUA_PATH,
   STARTUP_LUA_PATH_ON_DISK = STARTUP_LUA_PATH_ON_DISK,
   UPDATE_LUA_PATH = UPDATE_LUA_PATH,
+  UTIL_LUA_URL_PATH = UTIL_LUA_URL_PATH,
   UTIL_LUA_PATH = UTIL_LUA_PATH,
+  VERSION_FILE_PATH = VERSION_FILE_PATH,
+  MAIN_LUA_PATH = MAIN_LUA_PATH,
 }
 
 function _M.file_exists(path)
-  local file = io.open(path, "r")
-  if file then
-    io.close(file)
-    return true
-  else
-    return false
-  end
+  return fs.exists(path)
 end
 
 function _M.get_latest_commit_sha()
