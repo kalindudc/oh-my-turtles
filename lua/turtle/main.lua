@@ -14,25 +14,41 @@ local function get_current_version()
   return "-1"
 end
 
-local function load_new_version(new_version)
-  print("New version available: " .. new_version)
-  print("Updating...")
-  shell.run("update")
+local function check_and_load_new_version(current_version)
+  local new_version = get_version()
+
+  if new_version ~= current_version then
+    print("New version available: " .. new_version .. "\n\n")
+    print("Updating in 5 secods...")
+    os.sleep(5)
+    shell.run("update")
+  end
 end
 
 local current_version = get_current_version()
 print ("Current version: " .. current_version)
 
-local start_time = os.time("utc")
-while true do
-  local new_version = get_version()
 
-  if new_version ~= current_version then
-    local end_time = os.time("utc")
-    local elapsed_time_in_seconds = (end_time * 3600) - (start_time * 3600)
-    print("Elapsed time: " .. elapsed_time_in_seconds)
-    load_new_version(new_version)
-  end
+local id = os.getComputerID()
+local world_id = "test_world" -- TODO: figure out how to generate
 
-  os.sleep(60)
-end
+local ws = assert(http.websocket("wss://localhost:8080"))
+local payload = {
+  type = 'register',
+  clientType = 'machine',
+  id = id,
+  payload = {
+    type = 'turtle',
+    worldId = world_id
+  }
+}
+
+ws.send(textutils.serialise(payload)) -- Send a message
+
+local packet = ws.receive()
+print(packet)
+
+ws.close()
+
+local received = textutils.unserialiseJSON(packet)
+os.setComputerLabel(received.name)

@@ -29,6 +29,6 @@ shell.run("wget " .. util.get_latest_url(UPDATE_LUA_URL_PATH) .. " " .. util.UPD
 shell.run("rm " .. util.STARTUP_LUA_PATH)
 shell.run("wget " .. util.get_latest_url(STARTUP_LUA_URL_PATH) .. " " .. util.STARTUP_LUA_PATH)
 
-print("Rebooting in 5 seconds")
+print("\n\nRebooting in 5 seconds")
 os.sleep(5)
 shell.run("reboot")

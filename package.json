@@ -13,8 +13,10 @@
     "dev": "nodemon ./src/index.ts"
   },
   "dependencies": {
+    "@faker-js/faker": "^8.4.1",
     "@types/node": "^22.0.2",
     "express": "^4.19.2",
+    "node-json-db": "^2.3.0",
     "typescript": "^5.5.4",
     "ws": "^8.18.0"
   },
