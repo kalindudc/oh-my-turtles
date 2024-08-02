@@ -1,1 +1,1 @@
-{"machines":[{"id":3,"name":"Ian","x":0,"y":0,"z":0,"world":{"id":"test_world","name":"test_world","blocks":[]}},{"id":2,"name":"Libby","x":0,"y":0,"z":0,"world":{"id":"test_world","name":"test_world","blocks":[]}}]}
+{"machines":[{"id":3,"name":"Ian","x":0,"y":0,"z":0,"world":{"id":"test_world","name":"test_world","blocks":[]}},{"id":4,"name":"Libby","x":0,"y":0,"z":0,"world":{"id":"test_world","name":"test_world","blocks":[]}},{"id":2,"name":"Marcos","x":0,"y":0,"z":0,"world":{"id":"test_world","name":"test_world","blocks":[]}}]}
