@@ -16,9 +16,11 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "typescript": "^4.9.5",
-    "web-vitals": "^2.1.4"
+    "web-vitals": "^2.1.4",
+    "winston": "^3.13.1"
   },
   "devDependencies": {
+    "@types/winston": "^2.4.4",
     "react-scripts": "5.0.1"
   },
   "scripts": {
@@ -44,5 +46,6 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  }
+  },
+  "proxy": "http://localhost:8080"
 }

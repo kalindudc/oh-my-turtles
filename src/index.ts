@@ -9,6 +9,7 @@ import { faker } from '@faker-js/faker';
 
 import { initializeWorldDB, addWorld, getWorld, World } from './models/world';
 import { initializeMachineDB, getMachine, addMachine, Machine, Turtle } from './models/machine';
+import { initializeUserDB } from './models/user';
 import { userRoutes } from './routes/authRoutes';
 import { adminRoutes } from './routes/adminRoutes';
 import { basicRoutes } from './routes/basicRoutes';
@@ -18,8 +19,10 @@ import createTaggedLogger from './logger';
 const logger = createTaggedLogger(path.basename(__filename));
 
 declare module 'express-session' {
-  export interface SessionData {
-    user: { [key: string]: any };
+  interface SessionData {
+    user: {
+      username: string;
+    };
   }
 }
 
@@ -55,6 +58,7 @@ app.get('*', (_, res) => {
 async function initializeDB() {
   await initializeWorldDB();
   await initializeMachineDB();
+  await initializeUserDB();
 }
 
 initializeDB().then(() => {

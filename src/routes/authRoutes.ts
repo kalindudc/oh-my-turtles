@@ -18,6 +18,16 @@ export const isAuthenticated = (req: Request, res: Response, next: NextFunction)
   }
 };
 
+const getUserFromSession = (req: Request) => {
+  const user = req.session.user;
+
+  if (user) {
+    return Buffer.from(user.username, 'base64').toString('utf-8');
+  }
+
+  return "";
+};
+
 // Login endpoint
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
@@ -33,6 +43,7 @@ router.post('/login', async (req, res) => {
     // base64 encode the username
     const encodedUsername = Buffer.from(username).toString('base64');
     req.session.user = { username: encodedUsername };
+    res.cookie('session_id', req.sessionID, { httpOnly: true });
     res.status(200).json({ message: 'Login successful' });
   } else {
     res.status(401).json({ message: 'Invalid username or password' });
@@ -50,13 +61,12 @@ router.post('/logout', (req, res) => {
   });
 });
 
-router.get('/getApiKey', isAuthenticated, (req: Request, res: Response) => {
-  if (!req.session.user) {
-    res.status(401).json({ message: 'Not authenticated' });
-    return;
-  }
+router.get('/me', isAuthenticated, (req: Request, res: Response) => {
+  res.json({ username: getUserFromSession(req) });
+});
 
-  const username = Buffer.from(req.session.user.username, 'base64').toString('utf-8');
+router.get('/getApiKey', isAuthenticated, (req: Request, res: Response) => {
+  const username = getUserFromSession(req);
   logger.info(`Generating API key for user: ${username}`);
 
   // generate a random API key

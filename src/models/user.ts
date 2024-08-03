@@ -11,7 +11,7 @@ export type User = {
 
 const db = new JsonDB(new Config('src/db/user.json', true, false, '/'));
 
-export async function initializeMachineDB() {
+export async function initializeUserDB() {
   try {
     var data = await db.getData("/");
     if (!data.users) {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
@@ -25,21 +25,31 @@ const App: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth(); // Get the loading state
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setIsInitialized(true); // Set initialized to true once loading is complete
+    }
+  }, [isLoading]);
+
+  if (!isInitialized) {
+    return (
+      <div className="loading">
+        <SkeletonMainContent />
+      </div>
+    );
+  }
 
   return (
     <div className="content">
       {isAuthenticated ? (
         <MainContent />
       ) : (
-        <>
-          <div className="skeleton-content">
-            <SkeletonMainContent />
-          </div>
-          <div className="login-form">
-            <LoginForm />
-          </div>
-        </>
+        <div className="login-form">
+          <LoginForm />
+        </div>
       )}
     </div>
   );
