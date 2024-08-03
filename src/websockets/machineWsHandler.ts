@@ -1,18 +1,53 @@
 import WebSocket from 'ws';
 import { randomUUID } from 'crypto';
 import { faker } from '@faker-js/faker';
+import path from 'path';
 
 import { ClientWebSocket, Message, WebSocketHandler } from './wsHandler';
 import { addWorld, getWorld, World } from '../models/world';
 import { getMachine, addMachine, Machine, Turtle } from '../models/machine';
+import createTaggedLogger from '../logger';
+
+const logger = createTaggedLogger(path.basename(__filename));
 
 export const MACHINE_API_KEY = process.env.MACHINE_API_KEY
 
 export class MachineWebSocketHandler implements WebSocketHandler {
 
   machines: ClientWebSocket[];
+  uninitiatedMachines: WebSocket[];
   constructor() {
     this.machines = [];
+    this.uninitiatedMachines = [];
+  }
+
+  registerUninitiated(ws: WebSocket) {
+    this.uninitiatedMachines.push(ws);
+    logger.info(`Uninitiated machine registered`);
+  }
+
+  unregisterUninitiated(ws: WebSocket) {
+    if (this.uninitiatedMachines.indexOf(ws) === -1) {
+      return;
+    }
+
+    this.uninitiatedMachines.splice(this.uninitiatedMachines.indexOf(ws), 1);
+    logger.info(`Uninitiated machine unregistered`);
+  }
+
+  initiateMachine(ws: WebSocket) {
+    if (this.uninitiatedMachines.indexOf(ws) === -1) {
+      logger.info(`Machine not registered`);
+      return;
+    }
+
+    if (!MACHINE_API_KEY) {
+      throw new Error('Machine API key not set');
+    }
+
+    this.uninitiatedMachines.splice(this.uninitiatedMachines.indexOf(ws), 1);
+    ws.send(MACHINE_API_KEY);
+    logger.info(`Machine initiated`);
   }
 
   parsePayload(id: string, world: World, payload: any): Machine | null {
@@ -53,12 +88,12 @@ export class MachineWebSocketHandler implements WebSocketHandler {
         ws.id = machine.id;
       });
       machine = machineData;
-      console.log(`Machine added with id: ${id}`);
+      logger.info(`Machine added with id: ${id}`);
     }
 
     this.machines.push(ws);
     ws.send(JSON.stringify({ type: 'register', id: machine.id, name: machine.name }));
-    console.log(`Machine registered with id: ${id}, machine count: ${this.machines.length}`);
+    logger.info(`Machine registered with id: ${id}, machine count: ${this.machines.length}`);
   }
 
   unregister(ws: ClientWebSocket) {
@@ -66,12 +101,12 @@ export class MachineWebSocketHandler implements WebSocketHandler {
       return;
     }
 
-    console.log(`Unregistering...`);
+    logger.info(`Unregistering...`);
     this.machines.splice(this.machines.indexOf(ws), 1);
-    console.log(`Machine unregistered`);
+    logger.info(`Machine unregistered`);
   }
 
   data(ws: ClientWebSocket, message: Message) {
-    console.log(`Received data from ${ws.type} with id ${ws.id}: ${message.payload}`);
+    logger.info(`Received data from ${ws.type} with id ${ws.id}: ${message.payload}`);
   }
 };

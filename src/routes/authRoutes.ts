@@ -1,5 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express';
+import path from 'path';
+
 import { getUser, comparePassword } from '../models/user';
+import createTaggedLogger from '../logger';
+import { randomUUID } from 'crypto';
+import { addApiKey } from '../websockets/clientWsHandler';
+
+const logger = createTaggedLogger(path.basename(__filename));
 
 const router = express.Router();
 
@@ -43,10 +50,21 @@ router.post('/logout', (req, res) => {
   });
 });
 
-router.get('/profile', isAuthenticated, (req: Request, res: Response) => {
-  const user = req.session.user as { username: string };
-  const username = Buffer.from(user.username, 'base64').toString('ascii');
-  res.status(200).json({ username });
+router.get('/getApiKey', isAuthenticated, (req: Request, res: Response) => {
+  if (!req.session.user) {
+    res.status(401).json({ message: 'Not authenticated' });
+    return;
+  }
+
+  const username = Buffer.from(req.session.user.username, 'base64').toString('utf-8');
+  logger.info(`Generating API key for user: ${username}`);
+
+  // generate a random API key
+  const apiKey = Buffer.from(randomUUID()).toString('base64');
+  // register the API key with the clientWsHandler
+  addApiKey(apiKey, username)
+  // return the API key to the client
+  res.status(200).json({ apiKey: apiKey });
 });
 
 export { router as userRoutes };

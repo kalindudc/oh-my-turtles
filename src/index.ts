@@ -11,7 +11,11 @@ import { initializeWorldDB, addWorld, getWorld, World } from './models/world';
 import { initializeMachineDB, getMachine, addMachine, Machine, Turtle } from './models/machine';
 import { userRoutes } from './routes/authRoutes';
 import { adminRoutes } from './routes/adminRoutes';
+import { basicRoutes } from './routes/basicRoutes';
 import { handleWebSocket } from './websockets/wsHandler';
+import createTaggedLogger from './logger';
+
+const logger = createTaggedLogger(path.basename(__filename));
 
 declare module 'express-session' {
   export interface SessionData {
@@ -39,6 +43,7 @@ app.use(session({
 // Set up routes
 app.use('/api', userRoutes);
 app.use('/admin', adminRoutes);
+app.use('/basic', basicRoutes);
 
 // Serve static files from the React app
 app.use(express.static(path.join(__dirname, '../client/build')));
@@ -54,7 +59,7 @@ async function initializeDB() {
 
 initializeDB().then(() => {
   const server = app.listen(PORT, () => {
-    console.log(`Server is listening on port ${PORT}`);
+    logger.info(`Server is listening on port ${PORT}`);
   });
 
   const wss = new WebSocketServer({ server });

@@ -1,7 +1,12 @@
 import WebSocket from 'ws';
-import { CLIENT_API_KEY, ClientWebSocketHandler } from './_clientWsHandler';
-import { MACHINE_API_KEY, MachineWebSocketHandler } from './_machineWsHandler';
+import path from 'path';
 import http from 'http';
+
+import { isClientAuthorized, ClientWebSocketHandler } from './clientWsHandler';
+import { MACHINE_API_KEY, MachineWebSocketHandler } from './machineWsHandler';
+import createTaggedLogger from '../logger';
+
+const logger = createTaggedLogger(path.basename(__filename));
 
 export interface WebSocketHandler {
   register(ws: ClientWebSocket, message: Message): void;
@@ -25,14 +30,15 @@ export interface Message {
   clientType: ClientType;
   id?: string;
   payload?: any;
+  api_key?: string;
 }
 
-const isAuthorized = (apiKey: string | null, type: ClientType) => {
+const isAuthorized = (apiKey: string | undefined, type: ClientType) => {
   if (!apiKey) {
     return false;
   }
 
-  if (type === ClientType.CLIENT && apiKey === CLIENT_API_KEY) {
+  if (type === ClientType.CLIENT && isClientAuthorized(apiKey)) {
     return true;
   }
 
@@ -43,27 +49,29 @@ const isAuthorized = (apiKey: string | null, type: ClientType) => {
   return false;
 }
 
-const handlers : {[key in ClientType]?: WebSocketHandler} = {
-  [ClientType.CLIENT]: new ClientWebSocketHandler(),
-  [ClientType.MACHINE]: new MachineWebSocketHandler(),
-};
+const clientHandler : ClientWebSocketHandler = new ClientWebSocketHandler();
+const machineHandler : MachineWebSocketHandler = new MachineWebSocketHandler();
+
 
 // WebSocket connection handler
 export const handleWebSocket = (ws: ClientWebSocket, req: http.IncomingMessage) => {
-  console.log('New client initiating connection...');
-
-  const queryParams = new URL(req.url || '', `http://${req.headers.host}`).searchParams;
-  const apiKey = queryParams.get('apiKey');
+  logger.info('New client initiating connection...');
 
   ws.on('message', (message: string) => {
+    if (`${message}` === 'initiate') {
+      machineHandler.registerUninitiated(ws);
+      return;
+    }
+
     (async () => {
 
       try {
-        console.log(`Received message: ${message}`);
+        logger.info(`Received message: ${message}`);
         const parsedMessage: Message = JSON.parse(message);
+        const apiKey = parsedMessage.api_key;
 
         if (!parsedMessage.clientType && !ClientType[parsedMessage.clientType]) {
-          console.log('No client type provided');
+          logger.info('No client type provided');
           ws.close(1008, 'Invalid client type');
           return;
         }
@@ -71,43 +79,51 @@ export const handleWebSocket = (ws: ClientWebSocket, req: http.IncomingMessage) 
         const clientType = parsedMessage.clientType as ClientType;
 
         if (!isAuthorized(apiKey, clientType)) {
-          console.log('No API key provided');
+          logger.info('No API key provided');
           ws.close(1008, 'Not authorized');
           return
         }
 
-        if (!handlers[clientType]) {
-          console.log('No handler found for client type');
-          ws.close(1008, 'Invalid client type');
-          return;
-        }
-
         switch (parsedMessage.type) {
           case 'register':
-            await handlers[clientType].register(ws, parsedMessage);
+
+            if (clientType === ClientType.CLIENT) {
+              clientHandler.register(ws, parsedMessage);
+            } else {
+              await machineHandler.register(ws, parsedMessage);
+            }
             break;
 
           case 'unregister':
-            handlers[clientType].unregister(ws);
+            if (clientType === ClientType.CLIENT) {
+              clientHandler.unregister(ws);
+            } else {
+              machineHandler.unregister(ws);
+            }
             break;
 
           case 'data':
-            handlers[clientType].data(ws, parsedMessage);
+            if (clientType === ClientType.CLIENT) {
+              clientHandler.data(ws, parsedMessage);
+            } else {
+              machineHandler.data(ws, parsedMessage);
+            }
             break;
 
           default:
-            console.log('Unknown message type');
+            logger.info('Unknown message type');
         }
       } catch (error) {
-        console.log('Error parsing message:', error);
+        logger.info('Error parsing message:', error);
       }
 
     })();
   });
 
   ws.on('close', () => {
-    console.log('Client disconnected');
-    handlers[ClientType.CLIENT]?.unregister(ws);
-    handlers[ClientType.MACHINE]?.unregister(ws);
+    logger.info('Client disconnected');
+    clientHandler.unregister(ws);
+    machineHandler.unregister(ws);
+    machineHandler.unregisterUninitiated(ws);
   });
 };
