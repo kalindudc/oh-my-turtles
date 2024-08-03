@@ -4,7 +4,7 @@ import path from 'path';
 import { getUser, comparePassword } from '../models/user';
 import createTaggedLogger from '../logger';
 import { randomUUID } from 'crypto';
-import { addApiKey } from '../websockets/clientWsHandler';
+import { addApiKey, getApiKey } from '../websockets/clientWsHandler';
 
 const logger = createTaggedLogger(path.basename(__filename));
 
@@ -44,7 +44,7 @@ router.post('/login', async (req, res) => {
     const encodedUsername = Buffer.from(username).toString('base64');
     req.session.user = { username: encodedUsername };
     res.cookie('session_id', req.sessionID, { httpOnly: true });
-    res.status(200).json({ message: 'Login successful' });
+    res.status(200).json({ message: 'Login successful', username: username });
   } else {
     res.status(401).json({ message: 'Invalid username or password' });
   }
@@ -62,7 +62,8 @@ router.post('/logout', (req, res) => {
 });
 
 router.get('/me', isAuthenticated, (req: Request, res: Response) => {
-  res.json({ username: getUserFromSession(req) });
+  const username = getUserFromSession(req);
+  res.json({ username: username, apiKey: getApiKey(username) });
 });
 
 router.get('/getApiKey', isAuthenticated, (req: Request, res: Response) => {

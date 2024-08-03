@@ -47,7 +47,7 @@ const AppContent: React.FC = () => {
       {isAuthenticated ? (
         <MainContent />
       ) : (
-        <div className="login-form">
+        <div className="center-all">
           <LoginForm />
         </div>
       )}

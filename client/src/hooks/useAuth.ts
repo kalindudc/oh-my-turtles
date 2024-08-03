@@ -8,11 +8,7 @@ const useAuth = () => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
 
-  const { isAuthenticated, isLoading, login, logout, checkAuthentication } = context;
-
-  useEffect(() => {
-    checkAuthentication();
-  }, [checkAuthentication]);
+  const { isAuthenticated, isLoading, login, logout } = context;
 
   return { isAuthenticated, isLoading, login, logout };
 };

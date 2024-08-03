@@ -1,11 +1,11 @@
 import React from 'react';
-import { Box, Button, Typography } from '@mui/material';
-import { useUser } from '../context/AuthContext';
-import useAuth from '../hooks/useAuth';
+import { Box } from '@mui/material';
 
+import useAuth from '../hooks/useAuth';
+import Navbar from './Navbar';
+import Sidebar from './Sidebar';
 
 const MainContent: React.FC = () => {
-  const { user } = useUser();
   const { logout } = useAuth();
 
   const handleLogout = async () => {
@@ -14,11 +14,51 @@ const MainContent: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4">Welcome to the main content {user?.username}!</Typography>
-      <Button variant="contained" color="secondary" onClick={handleLogout}>
-        Logout
-      </Button>
+    <Box
+      display='flex'
+      flexDirection='column'
+      justifyContent='flex-start'
+      alignItems='flex-start'
+      width='100%'
+      height='100%'
+    >
+      <Navbar />
+      <Box
+        display='flex'
+        justifyContent='space-between'
+        alignItems='flex-start'
+        width='100%'
+        height='100%'
+      >
+        <Box
+          display='flex'
+          width='25%'
+          minWidth='300px'
+          height='100%'
+          flexDirection='column'
+          justifyContent='flex-start'
+          alignItems='flex-start'
+          borderRight='1px solid #ccc'
+          p="1, 0, 1, 0"
+          bgcolor='#e5e1db'
+          sx={{
+            overflowY: 'auto',
+            overflowX: 'hidden',
+          }}
+        >
+          <Sidebar />
+        </Box>
+        <Box
+          display='flex'
+          width='100%'
+          height='100%'
+          justifyContent='center'
+          alignItems='center'
+          bgcolor='#f2ede8'
+        >
+          Context
+        </Box>
+      </Box>
     </Box>
   );
 };

@@ -1,6 +1,6 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
 import logger from '../utils/logger';
-import { da } from '@faker-js/faker';
+import { requestApiKey } from '../utils/api';
 
 interface AuthContextProps {
   isAuthenticated: boolean;
@@ -8,14 +8,15 @@ interface AuthContextProps {
   login: (username: string, password: string) => void;
   logout: () => void;
   checkAuthentication: () => Promise<void>;
-  user: { username: string } | null;
+  user: { username: string, api_key: string | null } | null;
+  refreshApiKey: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<{ username: string } | null>(null);
+  const [user, setUser] = useState<{ username: string, api_key: string | null } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const login = async (username: string, password: string) => {
@@ -33,7 +34,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsAuthenticated(true);
         logger.log('Logged in successfully!');
         const data = await response.json();
-        setUser({ username: data.username });
+        const key = await requestApiKey();
+
+        setUser({ username: data.username, api_key: key });
       } else {
         const errorData = await response.json();
         logger.error(`Login failed: ${errorData.message}`);
@@ -75,7 +78,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (response.ok) {
         setIsAuthenticated(true);
         const data = await response.json();
-        setUser({ username: data.username });
+        const key = data.apiKey ? data.apiKey : await requestApiKey();
+        setUser({ username: data.username, api_key: key });
       } else {
         setIsAuthenticated(false);
       }
@@ -87,14 +91,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
+  const refreshApiKey = async () => {
+    try {
+      const key = await requestApiKey();
+      if (key) {
+        const username = user?.username;
+        if (!username) {
+           throw Error('No username found');
+        }
+        setUser({ username: username, api_key: key });
+      }
+    } catch (error) {
+      console.error('Error refreshing API key:', error);
+    }
+  };
 
-  // Check authentication status on initial load
-  React.useEffect(() => {
+
+  useEffect(() => {
     checkAuthentication();
-  }, []);
+  }, [checkAuthentication]);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout, checkAuthentication, user }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout, checkAuthentication, user, refreshApiKey }}>
       {children}
     </AuthContext.Provider>
   );

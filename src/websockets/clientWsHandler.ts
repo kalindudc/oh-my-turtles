@@ -3,6 +3,7 @@ import path from 'path';
 
 import { ClientWebSocket, Message, WebSocketHandler } from './wsHandler';
 import createTaggedLogger from '../logger';
+import exp from 'constants';
 
 const logger = createTaggedLogger(path.basename(__filename));
 const API_KEYS : Array<{apiKey: string, username: string}> = []
@@ -10,6 +11,18 @@ const API_KEYS : Array<{apiKey: string, username: string}> = []
 export const addApiKey = (apiKey: string, username: string) => {
   API_KEYS.push({apiKey, username});
   logger.info(`API successfully added for user: ${username}`);
+}
+
+export const getApiKey = (username: string) => {
+  const key = API_KEYS.find((k) => k.username === username);
+  return key ? key.apiKey : null;
+}
+
+export const removeApiKey = (username: string) => {
+  const index = API_KEYS.findIndex((k) => k.username === username);
+  if (index !== -1) {
+    API_KEYS.splice(index, 1);
+  }
 }
 
 export const isClientAuthorized = (apiKey: string | undefined) => {
