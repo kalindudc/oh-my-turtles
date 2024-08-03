@@ -9,13 +9,27 @@ if fs.exists("/APIKEY") then
   api_key_file.close()
 end
 
+local id = tostring(os.getComputerID())
+local world_id = "test_world" -- TODO: figure out how to generate
+
 if not API_KEY or API_KEY == "" then
   local ws = http.websocket("ws://${data.host}:${data.port}")
 
   print ("Requesting API key...")
-  ws.send("initiate") -- Send a message
+  local payload = {
+    type = 'initiate',
+    clientType = 'machine',
+    id = id,
+    payload = {
+      type = 'turtle',
+    },
+  }
+  ws.send(textutils.serialiseJSON(payload))
 
   local api_key_data = ws.receive()
+  if not api_key_data or api_key_data == "REJECTED" then
+    error("Could not get API key, retry later...")
+  end
 
   local api_key_file = fs.open("/APIKEY", "w")
   api_key_file.write(api_key_data)
@@ -30,8 +44,6 @@ if not API_KEY or API_KEY == "" then
   error("Could not get API key")
 end
 
-local id = os.getComputerID()
-local world_id = "test_world" -- TODO: figure out how to generate
 local ws_url = "ws://${data.host}:${data.port}"
 print(ws_url)
 
@@ -47,9 +59,12 @@ local payload = {
   api_key = API_KEY
 }
 
-ws.send(textutils.serialiseJSON(payload)) -- Send a message
+ws.send(textutils.serialiseJSON(payload))
 
 local packet = ws.receive()
+print(packet)
+
+packet = ws.receive()
 print(packet)
 
 ws.close()

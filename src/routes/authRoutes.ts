@@ -2,9 +2,11 @@ import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 
 import { getUser, comparePassword } from '../models/user';
-import createTaggedLogger from '../logger';
+import createTaggedLogger from '../logger/logger';
 import { randomUUID } from 'crypto';
 import { addApiKey, getApiKey } from '../websockets/clientWsHandler';
+import { getUninitiatedMachines, getActiveMachines, getActiveClients } from '../websockets/wsHandler';
+import { getMachines } from '../models/machine';
 
 const logger = createTaggedLogger(path.basename(__filename));
 
@@ -76,6 +78,33 @@ router.get('/getApiKey', isAuthenticated, (req: Request, res: Response) => {
   addApiKey(apiKey, username)
   // return the API key to the client
   res.status(200).json({ apiKey: apiKey });
+});
+
+// TODO: add routes to get initial machine sate, initiated and uninitiated
+
+router.get('/get/machines', isAuthenticated, async (req: Request, res: Response) => {
+  const username = getUserFromSession(req);
+  logger.info(`User: ${username} is requesting machines`);
+
+  // compile uninitiated machines
+  const uninitiatedMachineSockets = getUninitiatedMachines();
+  const uninitiatedMachines = Object.keys(uninitiatedMachineSockets).map((key) => {
+    return { id: key, type: uninitiatedMachineSockets[key].type };
+  });
+
+  type MachineType = {
+    id: string;
+    name: string;
+    type: string;
+    world_id: string;
+  }
+
+  // get registered machines
+  const machinesFromDb = await getMachines();
+  const machines : Array<MachineType> = machinesFromDb.map((machine: any) => {
+    return { id: machine.id, name: machine.name, type: machine.type, world_id: machine.world_id };
+  });
+  res.status(200).json({ machines: machines, uninitiated: uninitiatedMachines });
 });
 
 export { router as userRoutes };

@@ -2,23 +2,36 @@ import React, { useEffect, useState } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
+import { MachineProvider } from './context/MachineContext';
+import { WebSocketProvider } from './context/WebSocketContext';
 import useAuth from './hooks/useAuth';
 import LoginForm from './components/LoginForm';
 import MainContent from './components/MainContent';
 import SkeletonMainContent from './components/SkeletonMainContent';
 import './styles/App.css';
 
-const theme = createTheme();
+const theme = createTheme({
+  palette: {
+      text: {
+        primary: '#4e4d3d',
+        secondary: '#eeeddd',
+      },
+  }
+});
 
 const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <div className="app">
-          <div className="background"></div>
-          <AppContent />
-        </div>
+        <MachineProvider>
+          <WebSocketProvider>
+            <div className="app">
+              <div className="background"></div>
+              <AppContent />
+            </div>
+          </WebSocketProvider>
+        </MachineProvider>
       </AuthProvider>
     </ThemeProvider>
   );

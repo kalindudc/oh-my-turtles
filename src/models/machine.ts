@@ -7,7 +7,13 @@ export interface Machine {
   x: number;
   y: number;
   z: number;
-  world: World;
+  world_id: string;
+  type: string;
+}
+
+export type UninitiatedMachine = {
+  id: string;
+  type: string;
 }
 
 export class Turtle implements Machine {
@@ -16,19 +22,21 @@ export class Turtle implements Machine {
   x: number;
   y: number;
   z: number;
-  world: World;
+  world_id: string;
   fuel: number;
   inventory: Array<Item>;
+  type: string;
 
-  constructor(id: string, name: string, x: number, y: number, z: number, world: World, fuel: number, inventory: Array<Item>) {
+  constructor(id: string, name: string, x: number, y: number, z: number, world_id: string, fuel: number, inventory: Array<Item>) {
     this.id = id;
     this.name = name;
     this.x = x;
     this.y = y;
     this.z = z;
-    this.world = world;
+    this.world_id = world_id;
     this.fuel = fuel;
     this.inventory = inventory;
+    this.type = 'turtle';
   }
 }
 

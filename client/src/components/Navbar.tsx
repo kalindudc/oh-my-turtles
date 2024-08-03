@@ -2,10 +2,9 @@ import * as React from 'react';
 import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { Logout } from '@mui/icons-material';
 
-
-
 import useAuth from '../hooks/useAuth';
 import { useUser } from '../context/AuthContext';
+import { capitalize } from '../utils/functions';
 
 const Navbar: React.FC = () => {
   const { logout } = useAuth();
@@ -14,11 +13,6 @@ const Navbar: React.FC = () => {
   const handleLogout = async () => {
     await logout();
   };
-
-  const capitalize = (str : string | undefined) => {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1);
-  }
 
   return (
     <Box sx={{ flexGrow: 1 }} width='100%'>
@@ -31,7 +25,7 @@ const Navbar: React.FC = () => {
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
             {capitalize(user?.username)}
           </Typography>
-          
+
           {user && (
             <div>
               <Button variant="contained" size='small' color="error" startIcon={<Logout />} onClick={handleLogout}>

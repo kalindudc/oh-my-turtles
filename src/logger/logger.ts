@@ -1,6 +1,6 @@
-// src/logger.ts
 import { createLogger, format, transports } from 'winston';
-import path from 'path';
+import { redactionFormat } from './redactionFormat';
+
 
 const { combine, timestamp, printf, colorize, label } = format;
 
@@ -14,6 +14,7 @@ const createTaggedLogger = (tag: string) => {
     format: combine(
       colorize(),
       label({ label: tag }),
+      redactionFormat,
       timestamp(),
       myFormat
     ),

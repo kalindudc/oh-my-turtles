@@ -4,14 +4,15 @@ import http from 'http';
 
 import { isClientAuthorized, ClientWebSocketHandler } from './clientWsHandler';
 import { MACHINE_API_KEY, MachineWebSocketHandler } from './machineWsHandler';
-import createTaggedLogger from '../logger';
+import createTaggedLogger from '../logger/logger';
+import { Commands } from './socketsHelper';
 
 const logger = createTaggedLogger(path.basename(__filename));
 
 export interface WebSocketHandler {
-  register(ws: ClientWebSocket, message: Message): void;
-  unregister(ws: ClientWebSocket): void;
-  data(ws: ClientWebSocket, message: Message): void;
+  register(ws: ClientWebSocket, message: Message): string | null | Promise<string | null>;
+  unregister(ws: ClientWebSocket): string | null;
+  data(ws: ClientWebSocket, message: Message, handler: WebSocketHandler): string | null;
 }
 
 enum ClientType {
@@ -21,12 +22,16 @@ enum ClientType {
 
 // Types for WebSocket metadata and messages
 export interface ClientWebSocket extends WebSocket {
-  type?: ClientType;
+  id?: string;
+}
+
+export interface MachineWebSocket extends WebSocket {
+  type?: string;
   id?: string;
 }
 
 export interface Message {
-  type: 'register' | 'unregister' | 'data';
+  type: 'register' | 'unregister' | 'data' | 'initiate';
   clientType: ClientType;
   id?: string;
   payload?: any;
@@ -35,31 +40,52 @@ export interface Message {
 
 const isAuthorized = (apiKey: string | undefined, type: ClientType) => {
   if (!apiKey) {
+    logger.info('No API key provided');
     return false;
   }
 
   if (type === ClientType.CLIENT && isClientAuthorized(apiKey)) {
+    logger.info('Client authorized with API key');
     return true;
   }
 
   if (type === ClientType.MACHINE && apiKey === MACHINE_API_KEY) {
+    logger.info('Machine authorized with API key');
     return true;
   }
 
   return false;
 }
 
-const clientHandler : ClientWebSocketHandler = new ClientWebSocketHandler();
 const machineHandler : MachineWebSocketHandler = new MachineWebSocketHandler();
+const clientHandler : ClientWebSocketHandler = new ClientWebSocketHandler();
 
+export const getUninitiatedMachines = () => {
+  return machineHandler.uninitiatedMachines;
+};
+
+export const getActiveMachines = () => {
+  return machineHandler.machines;
+};
+
+export const getActiveClients = () => {
+  return clientHandler.clients;
+}
+
+export const getClientHandler = () => { return clientHandler; };
+export const getMachineHandler = () => { return machineHandler; };
 
 // WebSocket connection handler
 export const handleWebSocket = (ws: ClientWebSocket, req: http.IncomingMessage) => {
   logger.info('New client initiating connection...');
 
   ws.on('message', (message: string) => {
-    if (`${message}` === 'initiate') {
-      machineHandler.registerUninitiated(ws);
+    const parsedMessage: Message = JSON.parse(message);
+    let commandToProcess : string | null = null;
+
+    if (parsedMessage.type === 'initiate') {
+      commandToProcess = machineHandler.registerUninitiated(ws, parsedMessage);
+      processCommand(commandToProcess, ws, parsedMessage, clientHandler, machineHandler);
       return;
     }
 
@@ -67,7 +93,6 @@ export const handleWebSocket = (ws: ClientWebSocket, req: http.IncomingMessage) 
 
       try {
         logger.info(`Received message: ${message}`);
-        const parsedMessage: Message = JSON.parse(message);
         const apiKey = parsedMessage.api_key;
 
         if (!parsedMessage.clientType && !ClientType[parsedMessage.clientType]) {
@@ -79,7 +104,7 @@ export const handleWebSocket = (ws: ClientWebSocket, req: http.IncomingMessage) 
         const clientType = parsedMessage.clientType as ClientType;
 
         if (!isAuthorized(apiKey, clientType)) {
-          logger.info('No API key provided');
+          logger.info('Not authorized, connection closed');
           ws.close(1008, 'Not authorized');
           return
         }
@@ -88,25 +113,25 @@ export const handleWebSocket = (ws: ClientWebSocket, req: http.IncomingMessage) 
           case 'register':
 
             if (clientType === ClientType.CLIENT) {
-              clientHandler.register(ws, parsedMessage);
+              commandToProcess = clientHandler.register(ws, parsedMessage);
             } else {
-              await machineHandler.register(ws, parsedMessage);
+              commandToProcess = await machineHandler.register(ws, parsedMessage);
             }
             break;
 
           case 'unregister':
             if (clientType === ClientType.CLIENT) {
-              clientHandler.unregister(ws);
+              commandToProcess = clientHandler.unregister(ws);
             } else {
-              machineHandler.unregister(ws);
+              commandToProcess = machineHandler.unregister(ws);
             }
             break;
 
           case 'data':
             if (clientType === ClientType.CLIENT) {
-              clientHandler.data(ws, parsedMessage);
+              commandToProcess = clientHandler.data(ws, parsedMessage, machineHandler);
             } else {
-              machineHandler.data(ws, parsedMessage);
+              commandToProcess = machineHandler.data(ws, parsedMessage, clientHandler);
             }
             break;
 
@@ -117,13 +142,41 @@ export const handleWebSocket = (ws: ClientWebSocket, req: http.IncomingMessage) 
         logger.info('Error parsing message:', error);
       }
 
-    })();
+    })().then(() => {
+      processCommand(commandToProcess, ws, parsedMessage, clientHandler, machineHandler);
+    });
   });
 
   ws.on('close', () => {
-    logger.info('Client disconnected');
+    logger.info('Client or Machine disconnected');
     clientHandler.unregister(ws);
     machineHandler.unregister(ws);
     machineHandler.unregisterUninitiated(ws);
   });
+};
+
+const processCommand = (command: string | null, ws: ClientWebSocket, message: Message, clientHandler: ClientWebSocketHandler, machineHandler: MachineWebSocketHandler) => {
+  if (!command) {
+    return;
+  }
+
+  switch (command) {
+    case Commands.sync_machines_with_clients:
+      clientHandler.syncMachinesWithClients(machineHandler.machines);
+      break;
+
+    case Commands.sync_uninitiated_machines_with_clients:
+      clientHandler.syncUninitiatedMachinesWithClients(machineHandler.uninitiatedMachines);
+      break;
+
+    case Commands.sync_machines_with_current_client:
+      clientHandler.syncMachinesWithClient(ws, machineHandler.machines);
+      break;
+
+    case Commands.pass:
+      break;
+
+    default:
+      logger.info(`Unknown command: ${command}`);
+  }
 };

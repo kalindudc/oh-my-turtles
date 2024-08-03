@@ -14,7 +14,7 @@ import { userRoutes } from './routes/authRoutes';
 import { adminRoutes } from './routes/adminRoutes';
 import { basicRoutes } from './routes/basicRoutes';
 import { handleWebSocket } from './websockets/wsHandler';
-import createTaggedLogger from './logger';
+import createTaggedLogger from './logger/logger';
 
 const logger = createTaggedLogger(path.basename(__filename));
 

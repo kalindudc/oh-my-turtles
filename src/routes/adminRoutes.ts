@@ -4,7 +4,7 @@ import { addUser, hashPassword } from '../models/user';
 import basicAuth from 'basic-auth';
 import { generateSetup } from '../templates/setup.lua';
 import { MACHINE_API_KEY } from '../websockets/machineWsHandler';
-import createTaggedLogger from '../logger';
+import createTaggedLogger from '../logger/logger';
 
 const logger = createTaggedLogger(path.basename(__filename));
 
