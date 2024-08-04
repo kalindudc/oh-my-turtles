@@ -8,6 +8,7 @@ import { addApiKey, getApiKey } from '../websockets/clientWsHandler';
 import { getUninitiatedMachines, getActiveMachines, getActiveClients } from '../websockets/wsHandler';
 import { getMachines, Machine, Turtle } from '../models/machine';
 import { connect } from 'http2';
+import { getWorlds } from '../models/world';
 
 const logger = createTaggedLogger(path.basename(__filename));
 
@@ -81,8 +82,6 @@ router.get('/getApiKey', isAuthenticated, (req: Request, res: Response) => {
   res.status(200).json({ apiKey: apiKey });
 });
 
-// TODO: add routes to get initial machine sate, initiated and uninitiated
-
 router.get('/get/machines', isAuthenticated, async (req: Request, res: Response) => {
   const username = getUserFromSession(req);
   logger.info(`User: ${username} is requesting machines`);
@@ -101,6 +100,7 @@ router.get('/get/machines', isAuthenticated, async (req: Request, res: Response)
   const machines : Array<any> = machinesFromDb.map((machine: any) => {
     return {
       id: machine.id,
+      computer_id: machine.computer_id,
       name: machine.name,
       type: machine.type,
       connected: machine.id in activeMachines,
@@ -110,9 +110,18 @@ router.get('/get/machines', isAuthenticated, async (req: Request, res: Response)
       fuel: machine.fuel,
       facing: machine.facing,
       inventory: machine.inventory,
+      world_id: machine.world_id
     };
   });
   res.status(200).json({ machines: machines, uninitiated: uninitiatedMachines });
+});
+
+router.get('/get/worlds', isAuthenticated, async (req: Request, res: Response) => {
+  const username = getUserFromSession(req);
+  logger.info(`User: ${username} is requesting machines`);
+
+  const worlds = await getWorlds();
+  res.status(200).json({ worlds: worlds });
 });
 
 export { router as userRoutes };

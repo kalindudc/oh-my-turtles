@@ -39,13 +39,18 @@ const getOppositeDirection = (direction: Direction) => {
   }
 }
 
-const move = (directionVector: vec3, machine: Machine) => {
-  const currentPosition = vec3.fromValues(machine.x, machine.y, machine.z);
-  vec3.add(currentPosition, currentPosition, directionVector);
+export const getNewPosition = (direction: Direction, cords: vec3) => {
+  const newCords = vec3.create();
+  vec3.add(newCords, cords, DIRECTION_VECTORS[direction]);
+  return newCords;
+}
 
-  machine.x = currentPosition[0];
-  machine.y = currentPosition[1];
-  machine.z = currentPosition[2];
+const move = (directionVector: vec3, machine: Machine) => {
+  const newPosition = getNewPosition(machine.facing, vec3.fromValues(machine.x, machine.y, machine.z));
+
+  machine.x = newPosition[0];
+  machine.y = newPosition[1];
+  machine.z = newPosition[2];
 }
 
 export const moveForward = (machine: Machine) => {
@@ -102,8 +107,13 @@ export const moveDown = (machine: Machine) => {
   move(DIRECTION_VECTORS[Direction.down], machine);
 }
 
+export const generateMachineID = (id: string, worldID: string) => {
+  return `${worldID}-${id}`;
+}
+
 export interface Machine {
   id: string;
+  computer_id: string;
   name: string;
   x: number;
   y: number;
@@ -120,6 +130,7 @@ export type UninitiatedMachine = {
 
 export class Turtle implements Machine {
   id: string;
+  computer_id: string;
   name: string;
   x: number;
   y: number;
@@ -130,8 +141,9 @@ export class Turtle implements Machine {
   inventory: Array<Item>;
   type: string;
 
-  constructor(id: string, name: string, world_id: string, fuel: number, inventory: Array<Item>) {
-    this.id = id;
+  constructor(computer_id: string, name: string, world_id: string, fuel: number, inventory: Array<Item>) {
+    this.id = generateMachineID(computer_id, world_id);
+    this.computer_id = computer_id;
     this.name = name;
     this.x = 0;
     this.y = 0;

@@ -7,7 +7,7 @@ interface ScreenLineProps {
 
 const ScreenLine: React.FC<ScreenLineProps> = ({ messages }) => {
   return (
-    <Box
+    <Box component="div"
       sx={{
         width: '100%',
         minWidth: "0",

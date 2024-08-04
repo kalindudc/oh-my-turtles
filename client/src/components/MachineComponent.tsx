@@ -37,9 +37,9 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) =>
   };
 
   return (
-    <Box position="relative" width="100%" height="100%" component="div">
+    <Box component="div" position="relative" width="100%" height="100%">
       {/* Main View */}
-      <Box
+      <Box component="div"
         sx={{
           width: '100%',
           height: '100%',
@@ -48,13 +48,12 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) =>
           alignItems: 'center',
           justifyContent: 'center',
         }}
-        component="div"
       >
         {world && <ThreeJSWorld blocks={world.blocks} />}
       </Box>
 
       {/* HUD Controls */}
-      <Box
+      <Box component="div"
         sx={{
           position: 'absolute',
           top: 0,
@@ -64,7 +63,6 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) =>
           margin: '0',
           padding: '0',
         }}
-        component="div"
       >
         {renderHUD()}
       </Box>

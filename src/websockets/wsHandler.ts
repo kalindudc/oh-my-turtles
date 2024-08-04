@@ -173,6 +173,10 @@ const processCommand = (command: string | null, ws: ClientWebSocket, message: Me
       clientHandler.syncMachinesWithClient(ws, machineHandler.machines);
       break;
 
+    case Commands.sync_worlds_with_clients:
+      clientHandler.syncWorldsWithClients();
+      break;
+
     case Commands.pass:
       break;
 

@@ -19,7 +19,7 @@ const MainContent: React.FC = () => {
   };
 
   return (
-    <Box
+    <Box component="div"
       display='flex'
       flexDirection='column'
       justifyContent='flex-start'
@@ -28,14 +28,14 @@ const MainContent: React.FC = () => {
       height='100%'
     >
       <Navbar />
-      <Box
+      <Box component="div"
         display='flex'
         justifyContent='space-between'
         alignItems='flex-start'
         width='100%'
         height='100%'
       >
-        <Box
+        <Box component="div"
           display='flex'
           width='25%'
           minWidth='300px'
@@ -53,7 +53,7 @@ const MainContent: React.FC = () => {
         >
           <Sidebar onSelect={(machine: Machine) => setSelectedMachine(machine)} />
         </Box>
-        <Box
+        <Box component="div"
           display='flex'
           width='100%'
           height='100%'

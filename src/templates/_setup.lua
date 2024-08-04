@@ -1,23 +1,25 @@
 local pretty = require "cc.pretty"
 
-local MOVEMENT_COMMANDS = {
-  ["forward"] = turtle.forward,
-  ["backward"] = turtle.back,
-  ["up"] = turtle.up,
-  ["down"] = turtle.down,
-  ["left"] = turtle.turnLeft,
-  ["right"] = turtle.turnRight
-}
+local function read_local_file(path)
+  if fs.exists(path) then
+    local file = fs.open(path, "r")
+    local data = file.readAll():gsub("\\n$", "")
+    file.close()
+    return data
+  end
 
-local API_KEY = nil
-if fs.exists("/APIKEY") then
-  local api_key_file = fs.open("/APIKEY", "r")
-  API_KEY = api_key_file.readAll():gsub("\\n$", "")
-  api_key_file.close()
+  return ""
 end
 
+local function write_local_file(path, data)
+  local file = fs.open(path, "w")
+  file.write(data)
+  file.close()
+end
+
+local API_KEY = read_local_file("/APIKEY")
+local WORLD_ID = read_local_file("/WORLDID")
 local ID = tostring(os.getComputerID())
-local WORLD_ID = "test_world" -- TODO: figure out how to generate
 
 local function log(...)
   local date = os.date("%Y-%m-%d %H:%M:%S")
@@ -31,7 +33,7 @@ local function log(...)
   print("[" .. date .. "] - " .. msg)
 end
 
-local function getCurrentInventor()
+local function get_current_inventory()
   local inventory = {}
   for i = 1, 16 do
     local item = turtle.getItemDetail(i)
@@ -42,6 +44,93 @@ local function getCurrentInventor()
     end
   end
   return inventory
+end
+
+----- COMMANDS START
+
+local function inspect(ws, command, initiated_client)
+  log("Inspecting block...")
+  local turtle_inspect_fns = {
+    ["inspect"] = turtle.inspect,
+    ["inspect_up"] = turtle.inspectUp,
+    ["inspect_down"] = turtle.inspectDown,
+  }
+
+  local turtle_detect_fns = {
+    ["inspect"] = turtle.detect,
+    ["inspect_up"] = turtle.detectUp,
+    ["inspect_down"] = turtle.detectDown,
+  }
+
+  local success_inspect, data = turtle_inspect_fns[command]()
+  local solid = turtle_detect_fns[command]()
+
+  local block_data = {
+    name = nil,
+    isSolid = solid,
+  }
+  if success_inspect then
+    block_data.name = data.name
+  end
+
+  ws.send(textutils.serialiseJSON({
+    type = 'data',
+    clientType = 'machine',
+    id = ID,
+    payload = {
+      type = 'turtle',
+      command = 'command_result',
+      origin_command = command,
+      origin_initiated_client = initiated_client,
+      success = true,
+      world_id = WORLD_ID,
+      block = block_data,
+      fuel = turtle.getFuelLevel(),
+      inventory = get_current_inventory(),
+    },
+    api_key = API_KEY
+  }))
+end
+
+----- COMMANDS END
+
+local MOVEMENT_COMMANDS = {
+  ["forward"] = turtle.forward,
+  ["backward"] = turtle.back,
+  ["up"] = turtle.up,
+  ["down"] = turtle.down,
+  ["left"] = turtle.turnLeft,
+  ["right"] = turtle.turnRight,
+}
+
+local COMMANDS = {
+  ["inspect"] = inspect,
+  ["inspect_up"] = inspect,
+  ["inspect_down"] = inspect,
+}
+
+local function move(ws, command, initiated_client)
+  local success, err = MOVEMENT_COMMANDS[command]()
+  if not success then
+    log("Error: ", err)
+  end
+  ws.send(textutils.serialiseJSON({
+    type = 'data',
+    clientType = 'machine',
+    id = ID,
+    payload = {
+      type = 'turtle',
+      command = 'command_result',
+      origin_command = command,
+      origin_initiated_client = initiated_client,
+      success = success,
+      world_id = WORLD_ID,
+      error = err,
+      fuel = turtle.getFuelLevel(),
+      inventory = get_current_inventory(),
+    },
+    api_key = API_KEY
+  }))
 end
 
 local ws = nil
@@ -57,9 +146,9 @@ local function main_loop()
     id = ID,
     payload = {
       type = 'turtle',
-      worldId = WORLD_ID,
+      world_id = WORLD_ID,
       fuel = turtle.getFuelLevel(),
-      inventory = getCurrentInventor(),
+      inventory = get_current_inventory(),
     },
     api_key = API_KEY
   }
@@ -94,28 +183,13 @@ local function main_loop()
     else
       if received.type == 'command' then
         local command = received.command
-        local args = received.args
+        local initiated_client = received.initiated_client
 
+        log("Received command: ", command, ", initiated by: ", initiated_client)
         if MOVEMENT_COMMANDS[command] then
-          local success, err = MOVEMENT_COMMANDS[command]()
-          if not success then
-            log("Error: ", err)
-          end
-          ws.send(textutils.serialiseJSON({
-            type = 'data',
-            clientType = 'machine',
-            id = ID,
-            payload = {
-              type = 'turtle',
-              command = 'command_result',
-              origin_command = command,
-              success = success,
-              error = err,
-              fuel = turtle.getFuelLevel(),
-              inventory = getCurrentInventor(),
-            },
-            api_key = API_KEY
-          }))
+          move(ws, command, initiated_client)
+        elseif COMMANDS[command] then
+          COMMANDS[command](ws, command, initiated_client)
         end
       end
     end
@@ -123,10 +197,11 @@ local function main_loop()
 
 end
 
-if not API_KEY or API_KEY == "" then
+local function intiate()
+  log("Intiating...")
   local ws = http.websocket("ws://${data.host}:${data.port}")
 
-  log ("Requesting API key...")
+  log ("Requesting API key and state...")
   local payload = {
     type = 'initiate',
     clientType = 'machine',
@@ -137,36 +212,64 @@ if not API_KEY or API_KEY == "" then
   }
   ws.send(textutils.serialiseJSON(payload))
 
-  local api_key_data = ws.receive()
-  if not api_key_data or api_key_data == "REJECTED" then
+  local packet = ws.receive()
+  log('Packet: ', packet)
+  if not packet then
     error("Could not get API key, retry later...")
   end
 
-  local api_key_file = fs.open("/APIKEY", "w")
-  api_key_file.write(api_key_data)
-  api_key_file.close()
+  local received = textutils.unserialiseJSON(packet)
+  log('Received: ', received)
+  --[[
+  {
+    "type": "initiate",
+    "success": true,
+    "api_key": "API_KEY"
+    "world_id": "WORLD_ID"
+  }
+  --]]
+
+  if not received.success then
+    error("Could not get API key, retry later...")
+  end
+
+  local world_id = received.world_id
+  local api_key = received.api_key
+
+  write_local_file("/APIKEY", api_key)
   log("API key saved to /APIKEY")
 
-  ws.close()
+  write_local_file("/WORLDID", world_id)
+  log("World ID saved to /WORLDID")
 
-  API_KEY = api_key_data
+  API_KEY = api_key
+  WORLD_ID = world_id
 end
 
-if not API_KEY or API_KEY == "" then
-  error("Could not get API key")
+local function handle_graceful_socker(ws)
+  log("Gracefully closing socket...")
+  if ws then
+    log("Closing websocket...")
+    local ok, errorMessage = pcall(ws.close)
+    if not ok then
+      log("Error clossing websocket: ", errorMessage)
+    else
+      log("Websocket closed")
+    end
+  end
+end
+
+if not API_KEY or API_KEY == "" or not WORLD_ID or WORLD_ID == "" then
+  local ws = nil
+  local ok, errorMessage = pcall(intiate)
+  handle_graceful_socker(ws)
+  if not ok then
+    log("Error: ", errorMessage)
+  end
 end
 
 local ok, errorMessage = pcall(main_loop)
-
-if ws then
-  log("Closing websocket...")
-  local ok, errorMessage = pcall(ws.close)
-  if not ok then
-    log("Error clossing websocket: ", errorMessage)
-  else
-    log("Websocket closed")
-  end
-end
+handle_graceful_socker(ws)
 
 if not ok then
   log("Error: ", errorMessage)

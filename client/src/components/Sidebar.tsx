@@ -65,7 +65,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
           uninitiated.map((machine: UninitiatedMachine) => (
             <ListItem key={"uninitiated-" + machine.id}>
               <ListItemText primary={capitalize(machine.type) + ": " + machine.id} primaryTypographyProps={{fontSize: '0.9rem'}} />
-              <Box
+              <Box component="div"
                 display='flex'
                 gap={1}
               >
@@ -176,7 +176,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
     });
   }
   return (
-    <Box width='100%' >
+    <Box component="div" width='100%' >
       <List sx={{
         display: 'flex',
         flexDirection: 'column',

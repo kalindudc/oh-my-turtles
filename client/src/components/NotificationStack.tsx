@@ -32,7 +32,7 @@ const NotificationStack: React.FC<{ notifications: Notification[], removeNotific
   }, [notifications, removeNotification]);
 
   return (
-    <Box display="flex" width="100%" height="100%" flexDirection="column" alignItems="flex-end" justifyContent="flex-start" gap={1} p={1}>
+    <Box component="div" display="flex" width="100%" height="100%" flexDirection="column" alignItems="flex-end" justifyContent="flex-start" gap={1} p={1}>
       <TransitionGroup>
         {notifications.map((notification) => (
           <CSSTransition
@@ -40,7 +40,7 @@ const NotificationStack: React.FC<{ notifications: Notification[], removeNotific
             timeout={300}
             classNames="fade"
           >
-            <Box
+            <Box component="div"
               key={notification.id}
               bgcolor="#ff6666"
               boxShadow={1}

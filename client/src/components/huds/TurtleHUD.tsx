@@ -84,7 +84,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
   const renderControlButtonGroup = (group: Array<{command: string, title: string, icon: React.ReactNode,} | null>, color : "inherit" | "error" | "info" | "primary" | "secondary" | "success" | "warning" | undefined, width? : string) => {
     const minWidth = width ? width : "50px";
     return (
-      <Box
+      <Box component="div"
         display="flex"
         flexDirection="column"
         justifyContent="flex-start"
@@ -96,7 +96,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
         {group.map((button, index) => {
           if (button) {
             return (
-              <Tooltip title={button.title} placement="top-start" disableInteractive followCursor>
+              <Tooltip title={button.title} placement="top-start" disableInteractive followCursor key={"group-" + index}>
                 <Button
                   variant="outlined"
                   color={color}
@@ -113,7 +113,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
             );
           } else {
             return (
-              <Box sx={{minWidth:"50px", height:"50px", width:"100%"}}></Box>
+              <Box component="div" sx={{minWidth:"50px", height:"50px", width:"100%"}}></Box>
             );
           }
         })}
@@ -122,7 +122,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
   }
 
   return (
-    <Box
+    <Box component="div"
       display="flex"
       flexDirection="column"
       gap={1}
@@ -132,7 +132,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
       alignItems="center"
     >
       {/* TOP HUD */}
-      <Box
+      <Box component="div"
         display="flex"
         flexDirection="row"
         gap={1}
@@ -141,7 +141,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
         minHeight="200px"
         padding="0.5rem"
       >
-        <Box
+        <Box component="div"
           display="flex"
           flexDirection="column"
           gap={0}
@@ -167,7 +167,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
       </Box>
 
       {/* BOTTOM HUD */}
-      <Box
+      <Box component="div"
         display="flex"
         flexDirection="row"
         gap={1}
@@ -175,7 +175,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
         minHeight="300px"
         padding="0.5rem"
       >
-        <Box
+        <Box component="div"
           display="flex"
           flexDirection="column"
           width="100%"
@@ -191,7 +191,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
           p={1}
         >
           {/* Control Buttons */}
-          <Box
+          <Box component="div"
             display="flex"
             flexDirection="row"
             gap={1}
@@ -204,7 +204,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
           </Box>
 
           {/* Command Buttons */}
-          <Box
+          <Box component="div"
             display="flex"
             flexDirection="row"
             width="auto"
@@ -344,7 +344,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
         </Box>
 
         {/* Inventory */}
-        <Box
+        <Box component="div"
           display="flex"
           flexDirection="column"
           gap={1}
@@ -360,7 +360,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
 
         </Box>
 
-        <Box
+        <Box component="div"
           sx={{
             position: 'absolute',
             top: 0,

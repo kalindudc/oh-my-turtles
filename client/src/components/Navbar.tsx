@@ -15,7 +15,7 @@ const Navbar: React.FC = () => {
   };
 
   return (
-    <Box sx={{ flexGrow: 1 }} width='100%'>
+    <Box component="div" sx={{ flexGrow: 1 }} width='100%'>
       <AppBar position="static">
         <Toolbar
           sx={{

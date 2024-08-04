@@ -27,7 +27,7 @@ const ExpandableListItem: React.FC<ExpandableListItemProps> = ({ title, children
   const fontColor = color ? color : '#4e4d3d';
 
   return (
-    <Box width='100%' border='1px'>
+    <Box component="div" width='100%' border='1px'>
       <ListItemButton
         onClick={handleClick}
         sx={{
@@ -42,7 +42,7 @@ const ExpandableListItem: React.FC<ExpandableListItemProps> = ({ title, children
         }}
       >
 
-        <Box
+        <Box component="div"
           display='flex'
           flexDirection='row'
           justifyContent='flex-start'
@@ -59,7 +59,7 @@ const ExpandableListItem: React.FC<ExpandableListItemProps> = ({ title, children
               }}
             />
           )}
-          <Box
+          <Box component="div"
             display='flex'
             flexDirection='row'
             justifyContent='flex-start'
