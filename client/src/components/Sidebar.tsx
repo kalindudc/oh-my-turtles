@@ -3,7 +3,7 @@ import { Box, List, ListItemButton, ListItemText, ListItem, Tooltip, IconButton 
 import { Check, Clear, QuestionMark, Pets, SmartToy, WifiOff, Wifi, Public } from '@mui/icons-material';
 
 import ExpandableListItem from './ExpandableListItem';
-import { useMachines, Machine, UninitiatedMachine } from '../context/MachineContext';
+import { useData, Machine, UninitiatedMachine } from '../context/DataContext';
 import { capitalize } from '../utils/functions';
 import SendMessageIconButton from './SendMessageIconButton';
 import { CommandsSent, createClientPayload, useWebSocket } from '../context/WebSocketContext'
@@ -18,7 +18,7 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
-  const { machines, uninitiated } = useMachines();
+  const { machines, uninitiated } = useData();
   const { user } = useUser();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState<UninitiatedMachine | null>(null);

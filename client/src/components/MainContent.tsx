@@ -4,7 +4,7 @@ import { Box } from '@mui/material';
 import useAuth from '../hooks/useAuth';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
-import { Machine } from '../context/MachineContext';
+import { Machine } from '../context/DataContext';
 import MachineComponent from './MachineComponent';
 import { useWebSocket } from '../context/WebSocketContext';
 

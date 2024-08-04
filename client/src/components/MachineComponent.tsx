@@ -1,7 +1,8 @@
 import React from 'react';
 import { Box, Button, Typography } from '@mui/material';
-import { Machine, useMachines } from '../context/MachineContext';
+import { Machine, useData } from '../context/DataContext';
 import TurtleHUD from './huds/TurtleHUD';
+import ThreeJSWorld from './ThreeJsWorld';
 
 interface MachineComponentProps {
   machineID: string;
@@ -9,7 +10,7 @@ interface MachineComponentProps {
 }
 
 const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) => {
-  const { machines } = useMachines();
+  const { machines, worlds } = useData();
   const machine = machines.find((m: Machine) => m.id === machineID) || {
     id: '',
     name: 'INVALID___',
@@ -23,6 +24,7 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) =>
     fuel: 0,
     inventory: [],
   };
+  const world = worlds.find((w) => w.id === machine.world_id) || { id: '', name: 'INVALID___', blocks: [] };
 
   const renderHUD = () => {
     switch (machine.type) {
@@ -35,7 +37,7 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) =>
   };
 
   return (
-    <Box position="relative" width="100%" height="100%">
+    <Box position="relative" width="100%" height="100%" component="div">
       {/* Main View */}
       <Box
         sx={{
@@ -46,8 +48,9 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) =>
           alignItems: 'center',
           justifyContent: 'center',
         }}
+        component="div"
       >
-        Content
+        {world && <ThreeJSWorld blocks={world.blocks} />}
       </Box>
 
       {/* HUD Controls */}
@@ -61,6 +64,7 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) =>
           margin: '0',
           padding: '0',
         }}
+        component="div"
       >
         {renderHUD()}
       </Box>

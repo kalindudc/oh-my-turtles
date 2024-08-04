@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useRef } from 'react';
 
 import useAuth from '../hooks/useAuth';
 import { useUser } from './AuthContext';
-import { useMachines } from './MachineContext';
+import { useData } from './DataContext';
 
 interface WebSocketContextProps {
   ws: WebSocket | null;
@@ -26,6 +26,7 @@ export enum CommandsSent {
 enum CommandsReceived {
   sync_machines = 'sync_machines',
   sync_uninitiated = 'sync_uninitiated',
+  sync_worlds = 'sync_worlds',
   register = 'register',
 }
 
@@ -35,7 +36,7 @@ export const WebSocketContext = createContext<WebSocketContextProps | undefined>
 export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuth();
   const { user } = useUser();
-  const { setMachines, setUninitiatedMachines } = useMachines();
+  const { setMachines, setUninitiatedMachines, setWorlds } = useData();
 
   const ws = useRef<WebSocket | null>(null);
 
@@ -73,6 +74,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             if (message.machines) {
               console.log('Syncing uninitiated machines with server:', message.machines);
               setUninitiatedMachines(message.machines);
+            }
+            break;
+          case CommandsReceived.sync_worlds:
+            if (message.worlds) {
+              console.log('Syncing worlds with server:', message.worlds);
+              setWorlds(message.worlds);
             }
             break;
           case CommandsReceived.register:

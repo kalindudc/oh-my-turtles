@@ -15,7 +15,7 @@ import {
   Close
 } from '@mui/icons-material';
 
-import { Machine } from '../../context/MachineContext';
+import { Machine } from '../../context/DataContext';
 import ScreenLine from '../SceenLine';
 import { useWebSocket, createClientPayload } from '../../context/WebSocketContext';
 import { useUser } from '../../context/AuthContext';

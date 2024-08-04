@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { AuthProvider } from './context/AuthContext';
-import { MachineProvider } from './context/MachineContext';
+import { DataProvider } from './context/DataContext';
 import { WebSocketProvider } from './context/WebSocketContext';
 import useAuth from './hooks/useAuth';
 import LoginForm from './components/LoginForm';
@@ -29,14 +29,14 @@ const App: React.FC = () => {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <AuthProvider>
-        <MachineProvider>
+        <DataProvider>
           <WebSocketProvider>
             <div className="app">
               <div className="background"></div>
               <AppContent />
             </div>
           </WebSocketProvider>
-        </MachineProvider>
+        </DataProvider>
       </AuthProvider>
     </ThemeProvider>
   );
