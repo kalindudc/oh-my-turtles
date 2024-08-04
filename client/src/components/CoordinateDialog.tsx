@@ -5,7 +5,7 @@ import { Direction } from '../enums/DirectionEnum';
 interface CoordinateDialogProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (x: number, y: number, z: number, direction: Direction) => void;
+  onSubmit: (x: number, y: number, z: number, direction: Direction, worldId: string) => void;
 }
 
 const CoordinateDialog: React.FC<CoordinateDialogProps> = ({ open, onClose, onSubmit }) => {
@@ -13,9 +13,10 @@ const CoordinateDialog: React.FC<CoordinateDialogProps> = ({ open, onClose, onSu
   const [y, setY] = useState<number | string>(0);
   const [z, setZ] = useState<number | string>(0);
   const [direction, setDirection] = useState<Direction>(Direction.north);
+  const [worldId, setWorldID] = useState<string>("");
 
   const handleSubmit = () => {
-    onSubmit(Number(x), Number(y), Number(z), direction);
+    onSubmit(Number(x), Number(y), Number(z), direction, worldId);
     onClose();
   };
 
@@ -29,7 +30,7 @@ const CoordinateDialog: React.FC<CoordinateDialogProps> = ({ open, onClose, onSu
 
   return (
     <Dialog open={open} onClose={onClose}>
-      <DialogTitle>Enter Coordinates and Direction</DialogTitle>
+      <DialogTitle>Enter Coordinates, Direction and the World</DialogTitle>
       <DialogContent>
         <TextField
           label="X"
@@ -72,6 +73,15 @@ const CoordinateDialog: React.FC<CoordinateDialogProps> = ({ open, onClose, onSu
             </MenuItem>
           ))}
         </TextField>
+        <TextField
+          label="World ID"
+          type="text"
+          fullWidth
+          value={worldId}
+          onChange={(e) => setWorldID(e.target.value)}
+          sx={{ mb: 2 }}
+          inputProps={{ step: 'any' }}
+        />
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>

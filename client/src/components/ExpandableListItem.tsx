@@ -7,6 +7,7 @@ interface ExpandableListItemProps {
   children?: React.ReactNode;
   notificationCount?: number;
   icon?: React.ReactNode;
+  color?: string;
 }
 
 function notificationsLabel(count: number) {
@@ -17,12 +18,13 @@ function notificationsLabel(count: number) {
   return `${count}`;
 }
 
-const ExpandableListItem: React.FC<ExpandableListItemProps> = ({ title, children, notificationCount, icon }) => {
+const ExpandableListItem: React.FC<ExpandableListItemProps> = ({ title, children, notificationCount, icon, color }) => {
   const [open, setOpen] = useState(false);
 
   const handleClick = () => {
     setOpen(!open);
   };
+  const fontColor = color ? color : '#4e4d3d';
 
   return (
     <Box width='100%' border='1px'>
@@ -67,7 +69,7 @@ const ExpandableListItem: React.FC<ExpandableListItemProps> = ({ title, children
             {icon}
             <ListItemText
               primary={title}
-              primaryTypographyProps={{ sx: { fontSize: '0.9rem', fontWeight: '600' } }} // Adjust font size here
+              primaryTypographyProps={{ sx: { fontSize: '0.9rem', color: fontColor } }} // Adjust font size here
             />
           </Box>
         </Box>

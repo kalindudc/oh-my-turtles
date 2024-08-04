@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Box, List, ListItemButton, ListItemText, ListItem, Tooltip, IconButton } from '@mui/material';
-import { Check, Clear, QuestionMark, Pets, SmartToy, WifiOff, Wifi } from '@mui/icons-material';
+import { Check, Clear, QuestionMark, Pets, SmartToy, WifiOff, Wifi, Public } from '@mui/icons-material';
 
 import ExpandableListItem from './ExpandableListItem';
 import { useMachines, Machine, UninitiatedMachine } from '../context/MachineContext';
@@ -35,7 +35,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
     setSelectedMachine(null);
   };
 
-  const handleDialogSubmit = (x: number, y: number, z: number, direction: Direction) => {
+  const handleDialogSubmit = (x: number, y: number, z: number, direction: Direction, worldID: string) => {
     if (selectedMachine) {
       const payload = createClientPayload({
         command: CommandsSent.initiate_accept_machine,
@@ -47,6 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
             z: z
           },
           facing: direction,
+          world_id: worldID
         }
       }, user?.api_key);
       sendMessage(JSON.stringify(payload));
@@ -106,15 +107,19 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
       return;
     }
 
-    // group machines by type
-    const machinesByType : {[key: string]: Array<Machine>} = {};
-    machines.forEach((machine: Machine) => {
-      if (machinesByType[machine.type]) {
-        machinesByType[machine.type].push(machine);
-      } else {
-        machinesByType[machine.type] = [machine];
-      }
-    });
+    // group machines by world_id and then by type
+    const machineByWorldIdAndType : {[key: string]: {[key: string]: Array<Machine>}} = (() => {
+      return machines.reduce((result, item) => {
+        if (!result[item.world_id]) {
+          result[item.world_id] = {};
+        }
+        if (!result[item.world_id][item.type]) {
+          result[item.world_id][item.type] = [];
+        }
+        result[item.world_id][item.type].push(item);
+        return result;
+      }, {} as { [key: string]: { [key: string]: Array<Machine> } });
+    })();
 
     const getMachineIcon = (type: string) => {
       switch (type) {
@@ -126,43 +131,50 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
       }
     };
 
-    return Object.keys(machinesByType).map((type: string) => {
+    return Object.keys(machineByWorldIdAndType).map((world: string) => {
       return (
-        <ExpandableListItem title={capitalize(type)} icon={getMachineIcon(type)} key={"list-type-" + type} >
+        <ExpandableListItem title={capitalize(world)} icon={<Public sx={{fontSize: "0.9rem"}} />} key={"sidebar-world-" + world} >
           {
-            machinesByType[type].map((machine: Machine) => (
-              <ListItemButton
-                key={"machine-" + machine.name + "-" + machine.type}
-                onClick={() => onSelect(machine)}
-              >
-                <ListItem
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: 1
-                  }}
-                >
-                  <ListItemText primary={machine.name} primaryTypographyProps={{fontSize: '0.9rem'}} />
-                  {machine.connected ?
-                    <Tooltip title="online" placement="right">
-                      <Wifi color='primary' />
-                    </Tooltip>
-                  :
-                    <Tooltip title="offline" placement="right">
-                      <WifiOff color='error' />
-                    </Tooltip>
+            Object.keys(machineByWorldIdAndType[world]).map((type: string) => {
+              return (
+                <ExpandableListItem title={capitalize(type)} icon={getMachineIcon(type)} key={"list-type-" + type} >
+                  {
+                    machineByWorldIdAndType[world][type].map((machine: Machine) => (
+                      <ListItemButton
+                        key={"machine-" + machine.name + "-" + machine.type}
+                        onClick={() => onSelect(machine)}
+                      >
+                        <ListItem
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 1
+                          }}
+                        >
+                          <ListItemText primary={machine.name} primaryTypographyProps={{fontSize: '0.9rem'}} />
+                          {machine.connected ?
+                            <Tooltip title="online" placement="right">
+                              <Wifi color='primary' />
+                            </Tooltip>
+                          :
+                            <Tooltip title="offline" placement="right">
+                              <WifiOff color='error' />
+                            </Tooltip>
+                          }
+                        </ListItem>
+                      </ListItemButton>
+                    ))
                   }
-                </ListItem>
-              </ListItemButton>
-            ))
+                </ExpandableListItem>
+              );
+            })
           }
         </ExpandableListItem>
       );
     });
-  };
-
+  }
   return (
     <Box width='100%' >
       <List sx={{

@@ -10,14 +10,7 @@ import MainContent from './components/MainContent';
 import SkeletonMainContent from './components/SkeletonMainContent';
 import './styles/App.css';
 
-const theme = createTheme({
-  palette: {
-      text: {
-        primary: '#4e4d3d',
-        secondary: '#eeeddd',
-      },
-  }
-});
+const theme = createTheme();
 
 const App: React.FC = () => {
   return (
