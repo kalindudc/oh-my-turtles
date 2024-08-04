@@ -1,12 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box } from '@mui/material';
 
 import useAuth from '../hooks/useAuth';
 import Navbar from './Navbar';
 import Sidebar from './Sidebar';
+import { Machine } from '../context/MachineContext';
+import MachineComponent from './MachineComponent';
+import { useWebSocket } from '../context/WebSocketContext';
 
 const MainContent: React.FC = () => {
   const { logout } = useAuth();
+  const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
+  const { ws } = useWebSocket();
 
   const handleLogout = async () => {
     await logout();
@@ -46,7 +51,7 @@ const MainContent: React.FC = () => {
             overflowX: 'hidden',
           }}
         >
-          <Sidebar />
+          <Sidebar onSelect={(machine: Machine) => setSelectedMachine(machine)} />
         </Box>
         <Box
           display='flex'
@@ -56,7 +61,11 @@ const MainContent: React.FC = () => {
           alignItems='center'
           bgcolor='#f2ede8'
         >
-          Context
+          {selectedMachine ? (
+            <MachineComponent machine={selectedMachine} ws={ws} />
+          ) : (
+            <div>Select a machine</div>
+          )}
         </Box>
       </Box>
     </Box>

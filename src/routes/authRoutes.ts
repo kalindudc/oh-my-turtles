@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { addApiKey, getApiKey } from '../websockets/clientWsHandler';
 import { getUninitiatedMachines, getActiveMachines, getActiveClients } from '../websockets/wsHandler';
 import { getMachines } from '../models/machine';
+import { connect } from 'http2';
 
 const logger = createTaggedLogger(path.basename(__filename));
 
@@ -99,10 +100,13 @@ router.get('/get/machines', isAuthenticated, async (req: Request, res: Response)
     world_id: string;
   }
 
+  // get machines that are active
+  const activeMachines = getActiveMachines();
+
   // get registered machines
   const machinesFromDb = await getMachines();
   const machines : Array<MachineType> = machinesFromDb.map((machine: any) => {
-    return { id: machine.id, name: machine.name, type: machine.type, world_id: machine.world_id };
+    return { id: machine.id, name: machine.name, type: machine.type, world_id: machine.world_id, connected: activeMachines[machine.id] !== undefined };
   });
   res.status(200).json({ machines: machines, uninitiated: uninitiatedMachines });
 });

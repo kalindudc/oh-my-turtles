@@ -24,7 +24,6 @@ export type MachineType = {
 export const MACHINE_API_KEY = process.env.MACHINE_API_KEY
 
 export class MachineWebSocketHandler implements WebSocketHandler {
-
   machines: {[key: string]: MachineWebSocket};
   uninitiatedMachines:{[key: string]: MachineWebSocket};
   constructor() {
@@ -100,7 +99,7 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     ws.id = machine.id;
     ws.type = machine.type;
     this.machines[machine.id] = ws;
-    ws.send(JSON.stringify({ type: 'register', id: machine.id, name: machine.name }));
+    ws.send(JSON.stringify({ type: 'register', id: machine.id, name: machine.name, success: true }));
     logger.info(`Machine registered with id: ${id}, machine count: ${Object.keys(this.machines).length}`);
     return wsCommands.sync_machines_with_clients;
   }
@@ -155,5 +154,16 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     delete this.uninitiatedMachines[id];
     logger.info(`Machine ${id} rejected`);
     return wsCommands.sync_uninitiated_machines_with_clients
+  }
+
+  sendCommand(machine_id: any, command: string): string | null {
+    if (!this.machines[machine_id]) {
+      logger.info(`Machine ${machine_id} does not exist`);
+      return wsCommands.pass;
+    }
+
+    const ws = this.machines[machine_id];
+    ws.send(JSON.stringify({ type: 'command', command: command }));
+    return wsCommands.sync_machines_with_clients;
   }
 };

@@ -44,26 +44,6 @@ export const MachineProvider: React.FC<{ children: ReactNode }> = ({ children })
         setUninitiatedMachines(data.uninitiated);
       })
       .catch((error) => console.error('Error fetching machines:', error));
-
-      const wsUrl = process.env.REACT_APP_WEBSOCKET_URL || `ws://${window.location.host}`;
-      const ws = new WebSocket(wsUrl);
-
-      ws.onopen = () => {
-        console.log('WebSocket connection opened');
-      };
-      ws.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        if (message.type === 'MACHINE_UPDATE') {
-          setMachines((prevMachines) => [...prevMachines, message.data]);
-        }
-      };
-      ws.onclose = () => {
-        console.log('WebSocket connection closed');
-      };
-
-      return () => {
-        ws.close();
-      };
     }
   }, [isAuthenticated]);
 

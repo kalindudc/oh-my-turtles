@@ -12,6 +12,12 @@ const API_KEYS : Array<{apiKey: string, username: string}> = []
 enum Commands {
   initiate_accept_machine = 'initiate_accept_machine',
   initiate_reject_machine = 'initiate_reject_machine',
+  forward = 'forward',
+  backward = 'backward',
+  left = 'left',
+  right = 'right',
+  up = 'up',
+  down = 'down',
 }
 
 export const addApiKey = (apiKey: string, username: string) => {
@@ -106,6 +112,15 @@ export class ClientWebSocketHandler implements WebSocketHandler {
         logger.info(`Machine ${payload.machine_id} rejected by ${username}`);
         return newCommand;
 
+      case Commands.forward:
+      case Commands.backward:
+      case Commands.left:
+      case Commands.right:
+      case Commands.up:
+      case Commands.down:
+        newCommand = machineHandler.sendCommand(payload.machine_id, command);
+        logger.info(`Command ${command} sent to machine ${payload.machine_id} by ${username}`);
+        return newCommand;
       default:
         logger.warn(`Unknown command: ${command}`);
         return newCommand;

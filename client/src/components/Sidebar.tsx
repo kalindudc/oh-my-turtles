@@ -8,8 +8,14 @@ import { capitalize } from '../utils/functions';
 import SendMessageIconButton from './SendMessageIconButton';
 import { CommandsSent, createClientPayload } from '../context/WebSocketContext'
 import { useUser } from '../context/AuthContext';
+import MachineComponent from './MachineComponent';
+import { useWebSocket } from '../context/WebSocketContext';
 
-const Sidebar: React.FC = () => {
+interface SidebarProps {
+  onSelect: (machine: Machine) => void;
+}
+
+const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
   const { machines, uninitiated } = useMachines();
   const { user } = useUser();
 
@@ -95,7 +101,10 @@ const Sidebar: React.FC = () => {
         <ExpandableListItem title={capitalize(type)} icon={getMachineIcon(type)} key={"list-type-" + type} >
           {
             machinesByType[type].map((machine: Machine) => (
-              <ListItemButton key={"machine-" + machine.name + "-" + machine.type}>
+              <ListItemButton
+                key={"machine-" + machine.name + "-" + machine.type}
+                onClick={() => onSelect(machine)}
+              >
                 <ListItem
                   sx={{
                     display: 'flex',

@@ -26,6 +26,7 @@ export enum CommandsSent {
 enum CommandsReceived {
   sync_machines = 'sync_machines',
   sync_uninitiated = 'sync_uninitiated',
+  register = 'register',
 }
 
 
@@ -73,6 +74,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               console.log('Syncing uninitiated machines with server:', message.machines);
               setUninitiatedMachines(message.machines);
             }
+            break;
+          case CommandsReceived.register:
+            console.log('Received registration confirmation from server:', message);
             break;
           default:
             console.error('Unknown command received from server:', command);
