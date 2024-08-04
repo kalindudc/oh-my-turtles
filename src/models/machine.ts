@@ -45,8 +45,8 @@ export const getNewPosition = (direction: Direction, cords: vec3) => {
   return newCords;
 }
 
-const move = (directionVector: vec3, machine: Machine) => {
-  const newPosition = getNewPosition(machine.facing, vec3.fromValues(machine.x, machine.y, machine.z));
+const move = (direction: Direction, machine: Machine) => {
+  const newPosition = getNewPosition(direction, vec3.fromValues(machine.x, machine.y, machine.z));
 
   machine.x = newPosition[0];
   machine.y = newPosition[1];
@@ -54,11 +54,11 @@ const move = (directionVector: vec3, machine: Machine) => {
 }
 
 export const moveForward = (machine: Machine) => {
-  move(DIRECTION_VECTORS[machine.facing], machine);
+  move(machine.facing, machine);
 }
 
 export const moveBackward = (machine: Machine) => {
-  move(DIRECTION_VECTORS[getOppositeDirection(machine.facing)], machine);
+  move(getOppositeDirection(machine.facing), machine);
 }
 
 export const turnLeft = (machine: Machine) => {
@@ -100,11 +100,11 @@ export const turnRight = (machine: Machine) => {
 }
 
 export const moveUp = (machine: Machine) => {
-  move(DIRECTION_VECTORS[Direction.up], machine);
+  move(Direction.up, machine);
 }
 
 export const moveDown = (machine: Machine) => {
-  move(DIRECTION_VECTORS[Direction.down], machine);
+  move(Direction.down, machine);
 }
 
 export const generateMachineID = (id: string, worldID: string) => {
