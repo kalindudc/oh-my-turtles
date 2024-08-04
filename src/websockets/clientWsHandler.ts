@@ -2,23 +2,12 @@ import path from 'path';
 
 import { ClientWebSocket, MachineWebSocket, Message, WebSocketHandler } from './wsHandler';
 import createTaggedLogger from '../logger/logger';
-import { MachineType, MachineWebSocketHandler } from './machineWsHandler';
-import { Commands as wsCommands } from './socketsHelper';
-import { getMachines } from '../models/machine';
+import { MachineWebSocketHandler } from './machineWsHandler';
+import { Commands as wsCommands, ClientCommands as Commands } from './socketsHelper';
+import { getMachines, Machine } from '../models/machine';
 
 const logger = createTaggedLogger(path.basename(__filename));
 const API_KEYS : Array<{apiKey: string, username: string}> = []
-
-enum Commands {
-  initiate_accept_machine = 'initiate_accept_machine',
-  initiate_reject_machine = 'initiate_reject_machine',
-  forward = 'forward',
-  backward = 'backward',
-  left = 'left',
-  right = 'right',
-  up = 'up',
-  down = 'down',
-}
 
 export const addApiKey = (apiKey: string, username: string) => {
   API_KEYS.push({apiKey, username});
@@ -75,7 +64,7 @@ export class ClientWebSocketHandler implements WebSocketHandler {
     return wsCommands.pass;
   }
 
-  data(ws: ClientWebSocket, message: Message, machineHandler: MachineWebSocketHandler) {
+  async data(ws: ClientWebSocket, message: Message, machineHandler: MachineWebSocketHandler) {
     if (!message.api_key) {
       logger.warn(`API key not provided this should not happen...`);
       return wsCommands.pass;
@@ -95,15 +84,15 @@ export class ClientWebSocketHandler implements WebSocketHandler {
       logger.info(`No command provided, ignoring...`);
       return wsCommands.pass;
     }
-    return this.processCommand(command, ws, username, payload, machineHandler);
+    return await this.processCommand(command, ws, username, payload, machineHandler);
   }
 
-  processCommand(command: string, ws: ClientWebSocket, username: string | null, payload: any, machineHandler: MachineWebSocketHandler) : string | null {
+  async processCommand(command: string, ws: ClientWebSocket, username: string | null, payload: any, machineHandler: MachineWebSocketHandler) : Promise<string | null> {
     let newCommand : string | null = wsCommands.pass;
 
     switch (command) {
       case Commands.initiate_accept_machine:
-        newCommand = machineHandler.acceptMachine(payload.machine_id);
+        newCommand = await machineHandler.acceptMachine(payload.machine_id, payload.data, ws);
         logger.info(`Machine ${payload.machine_id} accepted by ${username}`);
         return newCommand;
 
@@ -129,8 +118,19 @@ export class ClientWebSocketHandler implements WebSocketHandler {
 
   syncMachinesWithClient(ws: ClientWebSocket, machines: {[key: string]: MachineWebSocket}) {
     getMachines().then((machinesFromDb) => {
-      const updatedMachines : Array<MachineType> = machinesFromDb.map((machine: any) => {
-        return { id: machine.id, name: machine.name, type: machine.type, world_id: machine.world_id, connected: machine.id in machines };
+      const updatedMachines : Array<Machine> = machinesFromDb.map((machine: any) => {
+        return {
+          id: machine.id,
+          name: machine.name,
+          type: machine.type,
+          connected: machine.id in machines,
+          x: machine.x,
+          y: machine.y,
+          z: machine.z,
+          fuel: machine.fuel,
+          facing: machine.facing,
+          inventory: machine.inventory,
+        };
       });
       ws.send(JSON.stringify({ type: 'sync_machines', machines: updatedMachines }));
     });
@@ -138,8 +138,19 @@ export class ClientWebSocketHandler implements WebSocketHandler {
 
   syncMachinesWithClients(machines: {[key: string]: MachineWebSocket}) {
     getMachines().then((machinesFromDb) => {
-      const updatedMachines : Array<MachineType> = machinesFromDb.map((machine: any) => {
-        return { id: machine.id, name: machine.name, type: machine.type, world_id: machine.world_id, connected: machine.id in machines };
+      const updatedMachines : Array<Machine> = machinesFromDb.map((machine: any) => {
+        return {
+          id: machine.id,
+          name: machine.name,
+          type: machine.type,
+          connected: machine.id in machines,
+          x: machine.x,
+          y: machine.y,
+          z: machine.z,
+          fuel: machine.fuel,
+          facing: machine.facing,
+          inventory: machine.inventory,
+        };
       });
       this.clients.forEach((client) => {
         client.send(JSON.stringify({ type: 'sync_machines', machines: updatedMachines }));

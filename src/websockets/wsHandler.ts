@@ -12,7 +12,7 @@ const logger = createTaggedLogger(path.basename(__filename));
 export interface WebSocketHandler {
   register(ws: ClientWebSocket, message: Message): string | null | Promise<string | null>;
   unregister(ws: ClientWebSocket): string | null;
-  data(ws: ClientWebSocket, message: Message, handler: WebSocketHandler): string | null;
+  data(ws: ClientWebSocket, message: Message, handler: WebSocketHandler): string | null | Promise<string | null>;
 }
 
 enum ClientType {
@@ -129,9 +129,9 @@ export const handleWebSocket = (ws: ClientWebSocket, req: http.IncomingMessage) 
 
           case 'data':
             if (clientType === ClientType.CLIENT) {
-              commandToProcess = clientHandler.data(ws, parsedMessage, machineHandler);
+              commandToProcess = await clientHandler.data(ws, parsedMessage, machineHandler);
             } else {
-              commandToProcess = machineHandler.data(ws, parsedMessage, clientHandler);
+              commandToProcess = await machineHandler.data(ws, parsedMessage, clientHandler);
             }
             break;
 

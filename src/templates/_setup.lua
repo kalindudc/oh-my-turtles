@@ -31,6 +31,19 @@ local function log(...)
   print("[" .. date .. "] - " .. msg)
 end
 
+local function getCurrentInventor()
+  local inventory = {}
+  for i = 1, 16 do
+    local item = turtle.getItemDetail(i)
+    if item then
+      table.insert(inventory, item)
+    else
+      table.insert(inventory, {})
+    end
+  end
+  return inventory
+end
+
 local ws = nil
 local function main_loop()
   local ws_url = "ws://${data.host}:${data.port}"
@@ -44,7 +57,9 @@ local function main_loop()
     id = ID,
     payload = {
       type = 'turtle',
-      worldId = WORLD_ID
+      worldId = WORLD_ID,
+      fuel = turtle.getFuelLevel(),
+      inventory = getCurrentInventor(),
     },
     api_key = API_KEY
   }
@@ -91,9 +106,13 @@ local function main_loop()
             clientType = 'machine',
             id = ID,
             payload = {
-              type = 'command_result',
+              type = 'turtle',
+              command = 'command_result',
+              origin_command = command,
               success = success,
-              error = err
+              error = err,
+              fuel = turtle.getFuelLevel(),
+              inventory = getCurrentInventor(),
             },
             api_key = API_KEY
           }))

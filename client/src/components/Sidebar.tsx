@@ -1,15 +1,17 @@
-import React from 'react';
-import { Box, List, ListItemButton, ListItemText, ListItem, Tooltip } from '@mui/material';
+import React, { useState } from 'react';
+import { Box, List, ListItemButton, ListItemText, ListItem, Tooltip, IconButton } from '@mui/material';
 import { Check, Clear, QuestionMark, Pets, SmartToy, WifiOff, Wifi } from '@mui/icons-material';
 
 import ExpandableListItem from './ExpandableListItem';
 import { useMachines, Machine, UninitiatedMachine } from '../context/MachineContext';
 import { capitalize } from '../utils/functions';
 import SendMessageIconButton from './SendMessageIconButton';
-import { CommandsSent, createClientPayload } from '../context/WebSocketContext'
+import { CommandsSent, createClientPayload, useWebSocket } from '../context/WebSocketContext'
 import { useUser } from '../context/AuthContext';
-import MachineComponent from './MachineComponent';
-import { useWebSocket } from '../context/WebSocketContext';
+import CoordinateDialog from './CoordinateDialog';
+import { Direction } from '../enums/DirectionEnum';
+import { send } from 'process';
+
 
 interface SidebarProps {
   onSelect: (machine: Machine) => void;
@@ -18,6 +20,38 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
   const { machines, uninitiated } = useMachines();
   const { user } = useUser();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedMachine, setSelectedMachine] = useState<UninitiatedMachine | null>(null);
+  const { sendMessage } = useWebSocket();
+
+  const handleOpenDialog = (machine: UninitiatedMachine) => {
+    console.log("opening dialog to request data")
+    setSelectedMachine(machine);
+    setDialogOpen(true);
+  };
+
+  const handleCloseDialog = () => {
+    setDialogOpen(false);
+    setSelectedMachine(null);
+  };
+
+  const handleDialogSubmit = (x: number, y: number, z: number, direction: Direction) => {
+    if (selectedMachine) {
+      const payload = createClientPayload({
+        command: CommandsSent.initiate_accept_machine,
+        machine_id: selectedMachine.id,
+        data: {
+          cords: {
+            x: x,
+            y: y,
+            z: z
+          },
+          facing: direction,
+        }
+      }, user?.api_key);
+      sendMessage(JSON.stringify(payload));
+    }
+  };
 
   const renderUninitiated = (uninitiated: Array<UninitiatedMachine> ) => {
     if (!uninitiated.length) {
@@ -34,21 +68,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
                 display='flex'
                 gap={1}
               >
-                <SendMessageIconButton
+                <IconButton
                   aria-label="accept"
                   color="primary"
                   sx={{
                     border: '0.01rem solid #ddd'
                   }}
-                  payload={
-                    createClientPayload({
-                      command: CommandsSent.initiate_accept_machine,
-                      machine_id: machine.id
-                    }, user?.api_key)
-                  }
+                  onClick={() => handleOpenDialog(machine)}
                 >
                   <Check fontSize="small" />
-                </SendMessageIconButton>
+                </IconButton>
                 <SendMessageIconButton
                   aria-label="reject"
                   color="error"
@@ -78,13 +107,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
     }
 
     // group machines by type
-    const machinesByType = machines.reduce((acc: {[key : string]: Array<Machine>}, machine: Machine) => {
-      if (!acc[machine.type]) {
-        acc[machine.type] = [];
+    const machinesByType : {[key: string]: Array<Machine>} = {};
+    machines.forEach((machine: Machine) => {
+      if (machinesByType[machine.type]) {
+        machinesByType[machine.type].push(machine);
+      } else {
+        machinesByType[machine.type] = [machine];
       }
-      acc[machine.type].push(machine);
-      return acc;
-    }, {});
+    });
 
     const getMachineIcon = (type: string) => {
       switch (type) {
@@ -146,6 +176,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
         {renderMachines(machines)}
 
       </List>
+      <CoordinateDialog
+        open={dialogOpen}
+        onClose={handleCloseDialog}
+        onSubmit={handleDialogSubmit}
+      />
     </Box>
   );
 };

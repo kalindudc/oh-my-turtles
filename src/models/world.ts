@@ -25,10 +25,6 @@ export type World = {
   blocks: Array<Block>;
 }
 
-type WorldData = {
-  worlds: Array<World>;
-};
-
 const dbWorld = new JsonDB(new Config('src/db/world.json', true, false, '/'));
 
 export async function initializeWorldDB() {

@@ -10,6 +10,12 @@ export type Machine = {
   type: string;
   world_id: string;
   connected: boolean;
+  x: number;
+  y: number;
+  z: number;
+  facing?: string;
+  fuel?: number;
+  inventory?: Array<any>;
 }
 
 export type UninitiatedMachine = {

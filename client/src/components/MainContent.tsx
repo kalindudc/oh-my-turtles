@@ -62,7 +62,7 @@ const MainContent: React.FC = () => {
           bgcolor='#f2ede8'
         >
           {selectedMachine ? (
-            <MachineComponent machine={selectedMachine} ws={ws} />
+            <MachineComponent machineID={selectedMachine.id} ws={ws} />
           ) : (
             <div>Select a machine</div>
           )}

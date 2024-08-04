@@ -6,7 +6,7 @@ import createTaggedLogger from '../logger/logger';
 import { randomUUID } from 'crypto';
 import { addApiKey, getApiKey } from '../websockets/clientWsHandler';
 import { getUninitiatedMachines, getActiveMachines, getActiveClients } from '../websockets/wsHandler';
-import { getMachines } from '../models/machine';
+import { getMachines, Machine, Turtle } from '../models/machine';
 import { connect } from 'http2';
 
 const logger = createTaggedLogger(path.basename(__filename));
@@ -93,20 +93,24 @@ router.get('/get/machines', isAuthenticated, async (req: Request, res: Response)
     return { id: key, type: uninitiatedMachineSockets[key].type };
   });
 
-  type MachineType = {
-    id: string;
-    name: string;
-    type: string;
-    world_id: string;
-  }
-
   // get machines that are active
   const activeMachines = getActiveMachines();
 
   // get registered machines
   const machinesFromDb = await getMachines();
-  const machines : Array<MachineType> = machinesFromDb.map((machine: any) => {
-    return { id: machine.id, name: machine.name, type: machine.type, world_id: machine.world_id, connected: activeMachines[machine.id] !== undefined };
+  const machines : Array<any> = machinesFromDb.map((machine: any) => {
+    return {
+      id: machine.id,
+      name: machine.name,
+      type: machine.type,
+      connected: machine.id in activeMachines,
+      x: machine.x,
+      y: machine.y,
+      z: machine.z,
+      fuel: machine.fuel,
+      facing: machine.facing,
+      inventory: machine.inventory,
+    };
   });
   res.status(200).json({ machines: machines, uninitiated: uninitiatedMachines });
 });
