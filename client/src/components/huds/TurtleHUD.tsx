@@ -257,18 +257,18 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
             ], "info")}
             {renderControlButtonGroup([
               {
-                command: TurtleCommands.DETECT_UP,
-                title: "Detect Up",
+                command: TurtleCommands.INSPECT_UP,
+                title: "Inspect Up",
                 icon: <ArrowUpward />,
               },
               {
-                command: TurtleCommands.DETECT,
-                title: "Detect Forward",
+                command: TurtleCommands.INSPECT,
+                title: "Inspect Forward",
                 icon: <Visibility />,
               },
               {
-                command: TurtleCommands.DETECT_DOWN,
-                title: "Detect Down",
+                command: TurtleCommands.INSPECT_DOWN,
+                title: "Inspect Down",
                 icon: <ArrowDownward />,
               },
             ], "success", "80px")}
