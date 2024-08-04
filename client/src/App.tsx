@@ -10,7 +10,19 @@ import MainContent from './components/MainContent';
 import SkeletonMainContent from './components/SkeletonMainContent';
 import './styles/App.css';
 
-const theme = createTheme();
+const theme = createTheme({
+  palette: {
+    background: {
+      default: "#f2ede8"
+    }
+  }
+});
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+
+  },
+});
 
 const App: React.FC = () => {
   return (

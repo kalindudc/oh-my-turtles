@@ -10,6 +10,7 @@ const ScreenLine: React.FC<ScreenLineProps> = ({ messages }) => {
     <Box
       sx={{
         width: '100%',
+        minWidth: "0",
         height: '100%',
         padding: '10px',
         overflowY: 'scroll',
@@ -17,13 +18,23 @@ const ScreenLine: React.FC<ScreenLineProps> = ({ messages }) => {
         borderRadius: '4px',
         fontFamily: 'monospace',
         backdropFilter: 'blur(10px)',
-        margin: '0.5rem',
         flexDirection: 'column-reverse',
         display: 'flex',
+        gap: '0.5rem',
       }}
     >
       {messages.map((message, index) => (
-        <Typography key={index} variant="body2">
+        <Typography
+          key={index}
+          variant="body2"
+          sx={{
+            padding: '0.4rem',
+            backgroundColor: 'rgba(100, 100, 100, 0.1)',
+            borderRadius: '4px',
+            overflowWrap: "break-word",
+          }}
+          maxWidth="100%"
+        >
           {message}
         </Typography>
       ))}

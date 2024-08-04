@@ -47,12 +47,7 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) =>
           justifyContent: 'center',
         }}
       >
-        <Typography variant="h4">{machine.name}</Typography>
-        <Typography variant="subtitle1">{machine.type}</Typography>
-        <Typography variant="body1">World: {machine.world_id}</Typography>
-        <Typography variant="body1">Cords: {machine.x}, {machine.y}, {machine.z}</Typography>
-        <Typography variant="body1">Facing: {machine.facing}</Typography>
-        <Typography variant="body1">Fuel: {machine.fuel}</Typography>
+        Content
       </Box>
 
       {/* HUD Controls */}
