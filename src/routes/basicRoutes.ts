@@ -15,6 +15,7 @@ router.get('/generateSetup', (req, res) => {
   const host = hostHeader ? hostHeader.split(':')[0] : 'localhost';
   const port = hostHeader ? hostHeader.split(':')[1] : '8080';
 
+  // TODO: turtle wget does not pass port with HOST header. Figure out how to get it or set a standard.
   const data = {
     host: host || 'localhost',
     port: port || '8080',

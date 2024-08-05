@@ -1,11 +1,11 @@
 import path from 'path';
 
-import { ClientWebSocket, MachineWebSocket, Message, WebSocketHandler } from './wsHandler';
 import createTaggedLogger from '../logger/logger';
-import { MachineWebSocketHandler } from './machineWsHandler';
-import { Commands as wsCommands, ClientCommands as Commands } from './socketsHelper';
 import { getMachines, Machine } from '../models/machine';
 import { getWorlds } from '../models/world';
+import { MachineWebSocketHandler } from './machineWsHandler';
+import { ClientCommands as Commands, Commands as wsCommands } from './socketsHelper';
+import { ClientWebSocket, MachineWebSocket, Message, WebSocketHandler } from './wsHandler';
 
 const logger = createTaggedLogger(path.basename(__filename));
 const API_KEYS : Array<{apiKey: string, username: string}> = []

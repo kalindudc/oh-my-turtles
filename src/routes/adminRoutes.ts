@@ -1,18 +1,18 @@
 import express from 'express';
 import path from 'path';
-import { addUser, hashPassword } from '../models/user';
 import basicAuth from 'basic-auth';
-import { generateSetup } from '../templates/setup.lua';
-import { MACHINE_API_KEY } from '../websockets/machineWsHandler';
+
+import { addUser, hashPassword } from '../models/user';
 import createTaggedLogger from '../logger/logger';
+import { config } from '../config';
 
 const logger = createTaggedLogger(path.basename(__filename));
 
 const router = express.Router();
 
 // Admin credentials
-const ADMIN_USERNAME = process.env.ADMIN_USERNAME;
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const ADMIN_USERNAME = config.admin.username;
+const ADMIN_PASSWORD = config.admin.password;
 
 // Middleware for admin authentication
 const adminAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -48,22 +48,6 @@ router.post('/create-user', adminAuth, async (req, res) => {
   await addUser({id: username, password: hashedPassword});
 
   res.status(201).json({ message: `User ${username} created successfully` });
-});
-
-router.get('/setup', adminAuth, (_, res) => {
-  if (!MACHINE_API_KEY) {
-    res.status(500).send('Machine API key not set');
-    return;
-  }
-
-  const data = {
-    host: process.env.HOST || 'localhost',
-    port: process.env.PORT || '8080',
-    apiKey: MACHINE_API_KEY
-  }
-
-  res.set('Content-Type', 'text/plain')
-  res.status(200).send(generateSetup(data));
 });
 
 export { router as adminRoutes };

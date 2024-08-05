@@ -1,6 +1,6 @@
-import { createLogger, format, transports } from 'winston';
+import { createLogger, format, transports, config as winstonConfig } from 'winston';
 import { redactionFormat } from './redactionFormat';
-
+import { config } from '../config';
 
 const { combine, timestamp, printf, colorize, label } = format;
 
@@ -10,7 +10,7 @@ const myFormat = printf(({ level, message, timestamp, label }) => {
 
 const createTaggedLogger = (tag: string) => {
   return createLogger({
-    level: 'info',
+    levels: winstonConfig.syslog.levels,
     format: combine(
       colorize(),
       label({ label: tag }),
@@ -21,7 +21,7 @@ const createTaggedLogger = (tag: string) => {
     transports: [
       new transports.Console(),
       new transports.File({ filename: `logs/${tag}.log`, level: 'error' }),
-      new transports.File({ filename: 'logs/combined.log' })
+      new transports.File({ filename: 'logs/combined.log', level: config.logger.level }),
     ]
   });
 };

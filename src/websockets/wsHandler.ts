@@ -1,10 +1,11 @@
-import WebSocket from 'ws';
-import path from 'path';
 import http from 'http';
+import path from 'path';
+import WebSocket from 'ws';
 
-import { isClientAuthorized, ClientWebSocketHandler } from './clientWsHandler';
-import { MACHINE_API_KEY, MachineWebSocketHandler } from './machineWsHandler';
+import { config } from '../config';
 import createTaggedLogger from '../logger/logger';
+import { ClientWebSocketHandler, isClientAuthorized } from './clientWsHandler';
+import { MachineWebSocketHandler } from './machineWsHandler';
 import { Commands } from './socketsHelper';
 
 const logger = createTaggedLogger(path.basename(__filename));
@@ -49,7 +50,7 @@ const isAuthorized = (apiKey: string | undefined, type: ClientType) => {
     return true;
   }
 
-  if (type === ClientType.MACHINE && apiKey === MACHINE_API_KEY) {
+  if (type === ClientType.MACHINE && apiKey === config.machine.apiKey) {
     logger.info('Machine authorized with API key');
     return true;
   }

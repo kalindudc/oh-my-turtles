@@ -1,15 +1,14 @@
 import { JsonDB, Config } from 'node-json-db';
 import bcrypt from 'bcrypt';
 
-
-
+import { config } from '../config';
 
 export type User = {
   id: string;
   password: string;
 };
 
-const db = new JsonDB(new Config('src/db/user.json', true, false, '/'));
+const db = new JsonDB(new Config(config.database.users.path, true, false, '/'));
 
 export async function initializeUserDB() {
   try {

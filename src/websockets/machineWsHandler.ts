@@ -1,21 +1,19 @@
-import WebSocket from 'ws';
-import { randomUUID } from 'crypto';
-import { faker, th } from '@faker-js/faker';
+import { faker } from '@faker-js/faker';
+import { vec3 } from 'gl-matrix';
 import path from 'path';
 
-import { ClientWebSocket, MachineWebSocket, Message, WebSocketHandler } from './wsHandler';
-import { addOrUpdateBlock, addWorld, Block, BlockType, getWorld, World } from '../models/world';
-import { getMachine, addMachine, Machine, Turtle, updateMachine, Direction, moveBackward, moveDown, moveForward, moveUp, turnLeft, turnRight, generateMachineID, getNewPosition } from '../models/machine';
+import { config } from '../config';
 import createTaggedLogger from '../logger/logger';
-import { log } from 'console';
+import { addMachine, Direction, generateMachineID, getMachine, getNewPosition, moveBackward, moveDown, moveForward, moveUp, turnLeft, turnRight, Turtle, updateMachine } from '../models/machine';
+import { addOrUpdateBlock, addWorld, Block, BlockType, getWorld } from '../models/world';
 import { ClientWebSocketHandler } from './clientWsHandler';
-import { Commands as wsCommands, ClientCommands, Commands, MachineCommands } from './socketsHelper';
-import e from 'express';
-import { vec3 } from 'gl-matrix';
+import { ClientCommands, MachineCommands, Commands as wsCommands } from './socketsHelper';
+import { ClientWebSocket, MachineWebSocket, Message, WebSocketHandler } from './wsHandler';
+
 
 const logger = createTaggedLogger(path.basename(__filename));
 
-export const MACHINE_API_KEY = process.env.MACHINE_API_KEY
+const MACHINE_API_KEY = config.machine.apiKey;
 
 export class MachineWebSocketHandler implements WebSocketHandler {
   machines: {[key: string]: MachineWebSocket};
@@ -214,14 +212,19 @@ export class MachineWebSocketHandler implements WebSocketHandler {
 
   async handleBlockUpdate(turtle: Turtle, direction: Direction, block_data: {name? : string, is_solid: boolean, is_peripheral? : boolean}) : Promise<string | null> {
     const worldId = turtle.world_id;
-    const blockName = block_data.name ? block_data.name : "minecraft:air";
+    if (!block_data.name || !block_data.is_solid) {
+      logger.info(`The block is probably "AIR" or "VOID", ignoring...`);
+      return null;
+    }
+
+    const blockName = block_data.name;
     const blockPos = getNewPosition(direction, vec3.fromValues(turtle.x, turtle.y, turtle.z));
     const block : Block = {
       id: blockName,
       x: blockPos[0],
       y: blockPos[1],
       z: blockPos[2],
-      is_solid: block_data.is_solid ? block_data.is_solid : false,
+      is_solid: block_data.is_solid,
       type: block_data.is_peripheral ? BlockType.PERIPHERAL : BlockType.STATIC
     }
     logger.info(`Block inspected: ${block.id} at ${block.x}, ${block.y}, ${block.z}`);

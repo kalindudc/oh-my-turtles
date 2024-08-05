@@ -8,10 +8,10 @@ const redactSensitiveInfo = (message: string): string => {
   return message.replace(apiKeyPattern, '"api_key":"[REDACTED]"');
 };
 
-export const redactionFormat = format((info) => {
+export const redactionFormat = format((level) => {
   // Apply redaction only to the message field
-  if (info.message) {
-    info.message = redactSensitiveInfo(info.message);
+  if (level.message) {
+    level.message = redactSensitiveInfo(level.message);
   }
-  return info;
+  return level;
 })();

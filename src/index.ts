@@ -1,20 +1,21 @@
 // src/server.ts
-import path from 'path';
+import bodyParser from 'body-parser';
 import express from 'express';
 import session from 'express-session';
-import  bodyParser from 'body-parser'
-import { WebSocketServer, WebSocket } from 'ws';
-import { randomUUID } from 'crypto';
-import { faker } from '@faker-js/faker';
+import path from 'path';
+import { WebSocketServer } from 'ws';
 
-import { initializeWorldDB, addWorld, getWorld, World } from './models/world';
-import { initializeMachineDB, getMachine, addMachine, Machine, Turtle } from './models/machine';
+import { config } from './config';
+import createTaggedLogger from './logger/logger';
+import { initializeMachineDB } from './models/machine';
 import { initializeUserDB } from './models/user';
-import { userRoutes } from './routes/authRoutes';
+import { initializeWorldDB } from './models/world';
 import { adminRoutes } from './routes/adminRoutes';
+import { userRoutes } from './routes/authRoutes';
 import { basicRoutes } from './routes/basicRoutes';
 import { handleWebSocket } from './websockets/wsHandler';
-import createTaggedLogger from './logger/logger';
+
+const PORT = config.server.port;
 
 const logger = createTaggedLogger(path.basename(__filename));
 
@@ -27,13 +28,12 @@ declare module 'express-session' {
 }
 
 const app = express();
-const PORT = process.env.PORT || 8080;
 
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
 // get session secret from environment variable
-const sessionSecret = process.env.SESSION_SECRET || 'AVERYCOOLSECRET';
+const sessionSecret = config.server.sessionSecret;
 
 // Set up session management
 app.use(session({

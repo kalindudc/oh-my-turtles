@@ -1,8 +1,8 @@
+import { vec3 } from 'gl-matrix';
+
 import { JsonDB, Config } from 'node-json-db';
 import { Item, World } from './world';
-import { vec3 } from 'gl-matrix';
-import { Dir } from 'fs';
-
+import { config } from '../config';
 
 export enum Direction {
   north = 'north',
@@ -156,7 +156,7 @@ export class Turtle implements Machine {
   }
 }
 
-const dbMachine = new JsonDB(new Config('src/db/machine.json', true, false, '/'));
+const dbMachine = new JsonDB(new Config(config.database.machines.path, true, false, '/'));
 
 export async function initializeMachineDB() {
   try {

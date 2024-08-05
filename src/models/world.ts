@@ -1,5 +1,7 @@
 import { JsonDB, Config } from 'node-json-db';
 
+import { config } from '../config';
+
 export enum BlockType {
   PERIPHERAL = 'peripheral',
   STATIC = 'static',
@@ -26,7 +28,7 @@ export type World = {
   blocks: Array<Block>;
 }
 
-const dbWorld = new JsonDB(new Config('src/db/world.json', true, false, '/'));
+const dbWorld = new JsonDB(new Config(config.database.worlds.path, true, false, '/'));
 
 export async function initializeWorldDB() {
   try {
