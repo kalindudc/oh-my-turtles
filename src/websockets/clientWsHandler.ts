@@ -184,6 +184,7 @@ export class ClientWebSocketHandler implements WebSocketHandler {
 
   syncWorldsWithClients() {
     getWorlds().then((worlds) => {
+      logger.warn(`Syncing worlds with clients: ${JSON.stringify(worlds)}`);
       Object.keys(this.clients).forEach((key) => {
         this.clients[key].send(JSON.stringify({ type: 'sync_worlds', worlds: worlds }));
       });

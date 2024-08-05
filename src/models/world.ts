@@ -68,7 +68,7 @@ export async function deleteBlock(worldId: string, blockId: string) {
   return await dbWorld.delete(`/worlds[${worldIndex}]/blocks[${blockIndex}]`);
 }
 
-export async function addOrUpdateBlock(world_id: string, block: Block) : Promise<string | null> {
+export async function addOrUpdateBlock(world_id: string, block: Block) : Promise<string | undefined> {
   const worldIndex = await dbWorld.getIndex("/worlds", world_id);
   if (worldIndex === -1) {
     return "World not found";
@@ -81,5 +81,5 @@ export async function addOrUpdateBlock(world_id: string, block: Block) : Promise
   } else {
     await updateBlock(worldIndex, blockIndex, block);
   }
-  return null;
+  return;
 }

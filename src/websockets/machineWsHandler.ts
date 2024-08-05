@@ -245,9 +245,9 @@ export class MachineWebSocketHandler implements WebSocketHandler {
       logger.error(`World ${worldId} not found`);
       return wsCommands.pass;
     }
-    const err = addOrUpdateBlock(world.id, block);
-    if (!err) {
-      logger.error(`Error updating block in world ${worldId}`);
+    const err = await addOrUpdateBlock(world.id, block);
+    if (err) {
+      logger.error(`Error updating block in world ${worldId} with error ${err}`);
       return wsCommands.pass;
     }
 

@@ -49,11 +49,14 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) =>
           justifyContent: 'center',
         }}
       >
-        {world && <ThreeJSWorld blocks={world.blocks} />}
+        <ThreeJSWorld blocks={world.blocks} machine={machine} />
       </Box>
 
+
       {/* HUD Controls */}
-      <Box component="div"
+      <Box
+        component="div"
+        className="click-through"
         sx={{
           position: 'absolute',
           top: 0,

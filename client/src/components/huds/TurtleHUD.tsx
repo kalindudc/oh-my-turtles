@@ -113,7 +113,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
             );
           } else {
             return (
-              <Box component="div" sx={{minWidth:"50px", height:"50px", width:"100%"}}></Box>
+              <Box component="div" sx={{minWidth:"50px", height:"50px", width:"100%"}} key={"empty-" + index}></Box>
             );
           }
         })}
@@ -186,12 +186,14 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
           sx={{
             border: '0.05rem solid #ccc',
             borderRadius: '4px',
+            background: "rgba(230,220,210,0.5)"
           }}
           gap={1}
           p={1}
         >
           {/* Control Buttons */}
           <Box component="div"
+            className="interactive"
             display="flex"
             flexDirection="row"
             gap={1}
@@ -205,6 +207,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
 
           {/* Command Buttons */}
           <Box component="div"
+            className="interactive"
             display="flex"
             flexDirection="row"
             width="auto"
@@ -345,6 +348,7 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
 
         {/* Inventory */}
         <Box component="div"
+          className="interactive"
           display="flex"
           flexDirection="column"
           gap={1}
