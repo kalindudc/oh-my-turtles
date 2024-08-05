@@ -1,3 +1,5 @@
+import { table } from "console";
+
 export const config = {
   server: {
     port: process.env.PORT || 8080,
@@ -30,5 +32,12 @@ export const config = {
   },
   machine: {
     apiKey: process.env.MACHINE_API_KEY,
+  },
+  redis: {
+    host: process.env.REDIS_HOST || 'localhost',
+    password: process.env.REDIS_PASSWORD || 'password',
+  },
+  tasks: {
+    maxConcurrency: 5,
   },
 };

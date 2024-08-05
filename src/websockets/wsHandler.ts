@@ -1,19 +1,27 @@
 import http from 'http';
 import path from 'path';
 import WebSocket from 'ws';
+import { Mutex } from 'async-mutex';
 
 import { config } from '../config';
 import createTaggedLogger from '../logger/logger';
 import { ClientWebSocketHandler, isClientAuthorized } from './clientWsHandler';
 import { MachineWebSocketHandler } from './machineWsHandler';
 import { Commands } from './socketsHelper';
+import { randomUUID } from 'crypto';
+import { addTask } from '../util/taskQueue';
 
 const logger = createTaggedLogger(path.basename(__filename));
 
+const messageQueue = "messageQueue";
+const commandQueue = "commandQueue";
+
+const socketMap : Map<string, WebSocket> = new Map();
+
 export interface WebSocketHandler {
-  register(ws: ClientWebSocket, message: Message): string | null | Promise<string | null>;
-  unregister(ws: ClientWebSocket): string | null;
-  data(ws: ClientWebSocket, message: Message, handler: WebSocketHandler): string | null | Promise<string | null>;
+  register(ws: ClientWebSocket, message: Message) : Promise<string>;
+  unregister(ws: ClientWebSocket) : string;
+  data(ws: ClientWebSocket, message: Message, handler: ClientWebSocketHandler | MachineWebSocketHandler) : Promise<string>;
 }
 
 enum ClientType {
@@ -24,11 +32,13 @@ enum ClientType {
 // Types for WebSocket metadata and messages
 export interface ClientWebSocket extends WebSocket {
   id?: string;
+  username?: string
 }
 
 export interface MachineWebSocket extends WebSocket {
-  type?: string;
   id?: string;
+  type?: string;
+  machineId?: string;
 }
 
 export interface Message {
@@ -73,90 +83,40 @@ export const getActiveClients = () => {
   return clientHandler.clients;
 }
 
+export const getSocketMap = () => {
+  return socketMap;
+}
+
 export const getClientHandler = () => { return clientHandler; };
 export const getMachineHandler = () => { return machineHandler; };
 
 // WebSocket connection handler
 export const handleWebSocket = (ws: ClientWebSocket, req: http.IncomingMessage) => {
   logger.info('New client initiating connection...');
+  ws.id = randomUUID();
+  socketMap.set(ws.id, ws);
 
   ws.on('message', (message: string) => {
-    const parsedMessage: Message = JSON.parse(message);
-    let commandToProcess : string | null = null;
-
-    if (parsedMessage.type === 'initiate') {
-      commandToProcess = machineHandler.registerUninitiated(ws, parsedMessage);
-      processCommand(commandToProcess, ws, parsedMessage, clientHandler, machineHandler);
+    logger.info(`Received message: ${message}`);
+    let parsedMessage: Message;
+    try {
+      parsedMessage = JSON.parse(message);
+    }
+    catch (error) {
+      logger.error('Error parsing message:', error);
       return;
     }
-
-    (async () => {
-
-      try {
-        logger.info(`Received message: ${message}`);
-        const apiKey = parsedMessage.api_key;
-
-        if (!parsedMessage.clientType && !ClientType[parsedMessage.clientType]) {
-          logger.info('No client type provided');
-          ws.close(1008, 'Invalid client type');
-          return;
-        }
-
-        const clientType = parsedMessage.clientType as ClientType;
-
-        if (!isAuthorized(apiKey, clientType)) {
-          logger.info('Not authorized, connection closed');
-          ws.close(1008, 'Not authorized');
-          return
-        }
-
-        switch (parsedMessage.type) {
-          case 'register':
-
-            if (clientType === ClientType.CLIENT) {
-              commandToProcess = clientHandler.register(ws, parsedMessage);
-            } else {
-              commandToProcess = await machineHandler.register(ws, parsedMessage);
-            }
-            break;
-
-          case 'unregister':
-            if (clientType === ClientType.CLIENT) {
-              commandToProcess = clientHandler.unregister(ws);
-            } else {
-              commandToProcess = machineHandler.unregister(ws);
-            }
-            break;
-
-          case 'data':
-            if (clientType === ClientType.CLIENT) {
-              commandToProcess = await clientHandler.data(ws, parsedMessage, machineHandler);
-            } else {
-              commandToProcess = await machineHandler.data(ws, parsedMessage, clientHandler);
-            }
-            break;
-
-          default:
-            logger.info('Unknown message type');
-        }
-      } catch (error) {
-        logger.info('Error parsing message:', error);
-      }
-
-    })().then(() => {
-      processCommand(commandToProcess, ws, parsedMessage, clientHandler, machineHandler);
-    });
+    addTask(messageQueue, () => processMessage(parsedMessage, ws.id, () => {}));
   });
 
   ws.on('close', () => {
-    logger.info('Client or Machine disconnected');
-    clientHandler.unregister(ws);
-    machineHandler.unregister(ws);
-    machineHandler.unregisterUninitiated(ws);
+    logger.info('Client or Machine disconnecting...');
+
+    addTask(messageQueue, async () => await processMessage({type: 'close'}, ws.id, () => {}));
   });
 };
 
-const processCommand = (command: string | null, ws: ClientWebSocket, message: Message, clientHandler: ClientWebSocketHandler, machineHandler: MachineWebSocketHandler) => {
+const processCommand = async (command: string, ws: ClientWebSocket, message: Message, clientHandler: ClientWebSocketHandler, machineHandler: MachineWebSocketHandler) => {
   if (!command) {
     return;
   }
@@ -185,3 +145,81 @@ const processCommand = (command: string | null, ws: ClientWebSocket, message: Me
       logger.info(`Unknown command: ${command}`);
   }
 };
+
+
+const processMessage = async (parsedMessage:any, wsId:string | undefined, done : Function) => {
+  if (!wsId) {
+    logger.error('No websocket id provided');
+    return;
+  }
+
+  const ws = socketMap.get(wsId);
+  if (!ws) {
+    logger.error('No websocket found for id:', wsId);
+    return;
+  }
+
+  let commandToProcess : string = Commands.pass;
+  if (parsedMessage.type === 'initiate') {
+    logger.info('Initiating machine...');
+    commandToProcess = await machineHandler.registerUninitiated(ws, parsedMessage);
+    await processCommand(commandToProcess, ws, parsedMessage, clientHandler, machineHandler);
+    return;
+  }
+
+  if (parsedMessage.type === 'close') {
+    logger.info('Closing connection...');
+    clientHandler.unregister(ws);
+    machineHandler.unregister(ws);
+    machineHandler.unregisterUninitiated(ws);
+
+    await processCommand(Commands.sync_machines_with_clients, ws, parsedMessage, clientHandler, machineHandler);
+    socketMap.delete(wsId);
+    return;
+  }
+
+  if (!parsedMessage.clientType && !(parsedMessage.clientType in ClientType)) {
+    logger.warn('No client type provided');
+    ws.close(1008, 'Invalid client type');
+    return;
+  }
+
+  const apiKey = parsedMessage.api_key;
+  const clientType = parsedMessage.clientType as ClientType;
+  if (!isAuthorized(apiKey, clientType)) {
+    logger.warn('Not authorized, connection closed');
+    ws.close(1008, 'Not authorized');
+    return;
+  }
+
+  const handlers : {[key : string] : ClientWebSocketHandler | MachineWebSocketHandler} = {
+    [ClientType.CLIENT]: clientHandler,
+    [ClientType.MACHINE]: machineHandler,
+  }
+
+  switch (parsedMessage.type) {
+    case 'register':
+      commandToProcess = await handlers[clientType].register(ws, parsedMessage);
+      break;
+
+    case 'unregister':
+      commandToProcess = await handlers[clientType].unregister(ws);
+      break;
+
+    case 'data':
+      if (clientType === ClientType.MACHINE) {
+        commandToProcess = await machineHandler.data(ws, parsedMessage, clientHandler);
+      }
+      else {
+        commandToProcess = await clientHandler.data(ws, parsedMessage, machineHandler);
+      }
+      break;
+
+    default:
+      logger.warn('Unknown message type');
+  }
+
+  addTask(commandQueue, async () => await processCommand(commandToProcess, ws, parsedMessage, clientHandler, machineHandler));
+  done();
+}
+

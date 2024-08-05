@@ -23,13 +23,13 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     this.uninitiatedMachines = {};
   }
 
-  registerUninitiated(ws: MachineWebSocket, payload: Message) : string | null {
+  registerUninitiated(ws: MachineWebSocket, payload: Message) : string {
     if (!payload.id) {
       logger.error(`Uninitiated machine id not provided`);
       return wsCommands.pass;
     }
 
-    ws.id = payload.id;
+    ws.machineId = payload.id;
     if (payload.payload) {
       ws.type = payload.payload.type;
     }
@@ -38,7 +38,7 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     return wsCommands.sync_uninitiated_machines_with_clients;
   }
 
-  unregisterUninitiated(ws: MachineWebSocket) : string | null {
+  unregisterUninitiated(ws: MachineWebSocket) : string {
     const id : string | undefined = Object.keys(this.uninitiatedMachines).find(key => this.uninitiatedMachines[key] === ws)
     if (!id) {
       return wsCommands.pass;
@@ -61,12 +61,12 @@ export class MachineWebSocketHandler implements WebSocketHandler {
       logger.info(`Machine updated in db with id: ${computer_id}`);
     }
 
-    ws.id = turtle.id;
+    ws.machineId = turtle.id;
     ws.type = turtle.type;
     return null;
   }
 
-  async register(ws: MachineWebSocket, message: Message) {
+  async register(ws: MachineWebSocket, message: Message) : Promise<string> {
     const computer_id = message.id;
     const payload = message.payload;
 
@@ -99,12 +99,14 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     }
 
     this.machines[machine.id] = ws;
+    ws.machineId = machine.id;
+    ws.type = machine.type;
     ws.send(JSON.stringify({ type: 'register', id: machine.id, name: machine.name, success: true }));
     logger.info(`Machine registered with id: ${id}, machine count: ${Object.keys(this.machines).length}`);
     return wsCommands.sync_machines_with_clients;
   }
 
-  unregister(ws: MachineWebSocket) {
+  unregister(ws: MachineWebSocket): string {
     const id : string | undefined = Object.keys(this.machines).find(key => this.machines[key] === ws)
     if (!id) {
       return wsCommands.pass;
@@ -138,7 +140,7 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     }
   }
 
-  async processCommandResult(computer_id: string, payload: any, clientHandler: ClientWebSocketHandler) : Promise<string | null> {
+  async processCommandResult(computer_id: string, payload: any, clientHandler: ClientWebSocketHandler) : Promise<string> {
     if (!payload.success) {
       const origin_initiator = payload.origin_initiated_client
       if (origin_initiator && clientHandler.clients[origin_initiator]) {
@@ -333,7 +335,7 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     return null;
   }
 
-  async acceptMachine(computer_id: string, data: {cords? : {x : number, y : number, z : number}, facing?: Direction, world_id : string}, client: ClientWebSocket) : Promise<string | null> {
+  async acceptMachine(computer_id: string, data: {cords? : {x : number, y : number, z : number}, facing?: Direction, world_id : string}, client: ClientWebSocket) : Promise<string> {
     if (!this.uninitiatedMachines[computer_id]) {
       logger.info(`Machine ${computer_id} does not exist in uninitiated machines`);
       return wsCommands.pass;
@@ -389,7 +391,7 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     return wsCommands.sync_uninitiated_machines_with_clients
   }
 
-  sendCommand(machine_id: any, command: string, clientControllerUsername : string | null): string | null {
+  sendCommand(machine_id: any, command: string, clientControllerUsername : string | null): string {
     if (!this.machines[machine_id]) {
       logger.info(`Machine ${machine_id} does not exist`);
       return wsCommands.pass;

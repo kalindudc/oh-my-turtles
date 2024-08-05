@@ -47,13 +47,13 @@ export class ClientWebSocketHandler implements WebSocketHandler {
     this.clients = {};
   }
 
-  register(ws: ClientWebSocket, message: Message) {
+  async register(ws: ClientWebSocket, message: Message) {
     if (!message.id) {
       logger.error(`Client id not provided, ignoring...`);
       return wsCommands.pass;
     }
 
-    ws.id = message.id;
+    ws.username = message.id;
     this.clients[message.id] = ws;
     logger.info(`Client registered with id: ${message.id}`);
     ws.send(JSON.stringify({ type: 'register', id: message.id }));
@@ -80,7 +80,7 @@ export class ClientWebSocketHandler implements WebSocketHandler {
     const username = getUserName(message.api_key);
     const payload = message.payload;
     if (!payload) {
-      logger.error(`Received data from ${ws.id} with no payload`);
+      logger.error(`Received data from ${ws.username} with no payload`);
       return wsCommands.pass;
     }
 
@@ -94,7 +94,7 @@ export class ClientWebSocketHandler implements WebSocketHandler {
     return await this.processCommand(command, ws, username, payload, machineHandler);
   }
 
-  async processCommand(command: string, ws: ClientWebSocket, username: string | null, payload: any, machineHandler: MachineWebSocketHandler) : Promise<string | null> {
+  async processCommand(command: string, ws: ClientWebSocket, username: string | null, payload: any, machineHandler: MachineWebSocketHandler) : Promise<string> {
     let newCommand : string | null = wsCommands.pass;
 
     switch (command) {
