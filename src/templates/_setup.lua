@@ -1,5 +1,17 @@
 local pretty = require "cc.pretty"
 
+local TURTLE_INSPECT_FNS = {
+  ["inspect"] = turtle.inspect,
+  ["inspect_up"] = turtle.inspectUp,
+  ["inspect_down"] = turtle.inspectDown,
+}
+
+local TURTLE_DETECT_FNS = {
+  ["inspect"] = turtle.detect,
+  ["inspect_up"] = turtle.detectUp,
+  ["inspect_down"] = turtle.detectDown,
+}
+
 local function read_local_file(path)
   if fs.exists(path) then
     local file = fs.open(path, "r")
@@ -48,31 +60,30 @@ end
 
 ----- COMMANDS START
 
-local function inspect(ws, command, initiated_client)
-  log("Inspecting block...")
-  local turtle_inspect_fns = {
-    ["inspect"] = turtle.inspect,
-    ["inspect_up"] = turtle.inspectUp,
-    ["inspect_down"] = turtle.inspectDown,
-  }
+local function inspect_and_get_block_data(command)
+  local solid = TURTLE_DETECT_FNS[command]()
+  if not solid then
+    log("Not solid", command)
+    return {
+      name = nil,
+      is_solid = false,
+    }
+  end
 
-  local turtle_detect_fns = {
-    ["inspect"] = turtle.detect,
-    ["inspect_up"] = turtle.detectUp,
-    ["inspect_down"] = turtle.detectDown,
-  }
-
-  local success_inspect, data = turtle_inspect_fns[command]()
-  local solid = turtle_detect_fns[command]()
-
+  local success_inspect, data = TURTLE_INSPECT_FNS[command]()
   local block_data = {
     name = nil,
-    isSolid = solid,
+    is_solid = solid,
   }
   if success_inspect then
     block_data.name = data.name
   end
 
+  return block_data
+end
+
+local function inspect(ws, command, initiated_client)
+  log("Inspecting block...")
   ws.send(textutils.serialiseJSON({
     type = 'data',
     clientType = 'machine',
@@ -84,7 +95,7 @@ local function inspect(ws, command, initiated_client)
       origin_initiated_client = initiated_client,
       success = true,
       world_id = WORLD_ID,
-      block = block_data,
+      block = inspect_and_get_block_data(command),
       fuel = turtle.getFuelLevel(),
       inventory = get_current_inventory(),
     },
@@ -111,9 +122,8 @@ local COMMANDS = {
 
 local function move(ws, command, initiated_client)
   local success, err = MOVEMENT_COMMANDS[command]()
-  if not success then
-    log("Error: ", err)
-  end
+  local block_data = nil
+
   ws.send(textutils.serialiseJSON({
     type = 'data',
     clientType = 'machine',
@@ -128,6 +138,30 @@ local function move(ws, command, initiated_client)
       error = err,
       fuel = turtle.getFuelLevel(),
       inventory = get_current_inventory(),
+    },
+    api_key = API_KEY
+  }))
+
+  if success then
+    block_data = {
+      ["forward"] = inspect_and_get_block_data("inspect"),
+      ["up"] = inspect_and_get_block_data("inspect_up"),
+      ["down"] = inspect_and_get_block_data("inspect_down"),
+    }
+  end
+
+  ws.send(textutils.serialiseJSON({
+    type = 'data',
+    clientType = 'machine',
+    id = ID,
+    payload = {
+      type = 'turtle',
+      success = true,
+      command = 'command_result',
+      origin_command = "move_inspect",
+      origin_initiated_client = initiated_client,
+      world_id = WORLD_ID,
+      block_data = block_data,
     },
     api_key = API_KEY
   }))

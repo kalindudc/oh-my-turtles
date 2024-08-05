@@ -22,4 +22,5 @@ export enum ClientCommands {
 
 export enum MachineCommands {
   command_result = 'command_result',
+  move_inspect = 'move_inspect',
 }

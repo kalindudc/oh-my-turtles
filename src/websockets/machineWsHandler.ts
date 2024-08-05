@@ -200,7 +200,8 @@ export class MachineWebSocketHandler implements WebSocketHandler {
       case ClientCommands.inspect_up:
       case ClientCommands.inspect_down:
         return await this.handleInspect(turtle, payload);
-        break;
+      case MachineCommands.move_inspect:
+        return await this.handleMoveInspect(turtle, payload);
       default:
         logger.info(`Unknown command: ${payload.origin_command}`);
         return wsCommands.pass;
@@ -209,6 +210,68 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     await updateMachine(turtle);
     logger.info(`Machine ${id} updated with result`);
     return wsCommands.sync_machines_with_clients;
+  }
+
+  async handleBlockUpdate(turtle: Turtle, direction: Direction, block_data: {name? : string, is_solid: boolean, is_peripheral? : boolean}) : Promise<string | null> {
+    const worldId = turtle.world_id;
+    const blockName = block_data.name ? block_data.name : "minecraft:air";
+    const blockPos = getNewPosition(direction, vec3.fromValues(turtle.x, turtle.y, turtle.z));
+    const block : Block = {
+      id: blockName,
+      x: blockPos[0],
+      y: blockPos[1],
+      z: blockPos[2],
+      is_solid: block_data.is_solid ? block_data.is_solid : false,
+      type: block_data.is_peripheral ? BlockType.PERIPHERAL : BlockType.STATIC
+    }
+    logger.info(`Block inspected: ${block.id} at ${block.x}, ${block.y}, ${block.z}`);
+
+    // update block in world or add new block
+    const world = await getWorld(worldId);
+    if (!world) {
+      logger.error(`World ${worldId} not found`);
+      return `world_not_found_${worldId}`;
+    }
+    const err = await addOrUpdateBlock(world.id, block);
+    if (err) {
+      logger.error(`Error updating block in world ${worldId} with error ${err}`);
+      return `error_updating_block_${err}`;
+    }
+    return null;
+  }
+
+  async handleMoveInspect(turtle: Turtle, payload: any) : Promise<wsCommands> {
+    logger.info(`Inspect results after moving machine ${turtle.id}`);
+    if (!payload.block_data) {
+      logger.error(`No block provided for inspect command`);
+      return wsCommands.pass;
+    }
+
+    const allErrors = [];
+    let err = await this.handleBlockUpdate(turtle, turtle.facing, payload.block_data.forward);
+    if (err) {
+      logger.error(`Error handling block update: ${err} for direction ${turtle.facing}`);
+      allErrors.push(err);
+    }
+
+    err = await this.handleBlockUpdate(turtle, Direction.up, payload.block_data.up);
+    if (err) {
+      logger.error(`Error handling block update: ${err} for direction up`);
+      allErrors.push(err);
+    }
+
+    err = await this.handleBlockUpdate(turtle, Direction.down, payload.block_data.down);
+    if (err) {
+      logger.error(`Error handling block update: ${err} for direction down`);
+      allErrors.push(err);
+    }
+
+    if (allErrors.length > 0) {
+      return wsCommands.pass;
+    }
+
+    logger.info(`Blocks successfully updated in world ${turtle.world_id}`);
+    return wsCommands.sync_worlds_with_clients;
   }
 
   async handleInspect(turtle: Turtle, payload: any) : Promise<wsCommands> {
@@ -224,34 +287,15 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     } else if (payload.origin_command === ClientCommands.inspect_down) {
       direction = Direction.down;
     }
+
     logger.info(`Inspecting block in direction ${direction}`);
-
-    const worldId = turtle.world_id;
-    const blockName = payload.block.name ? payload.block.name : "minecraft:air";
-    const blockPos = getNewPosition(direction, vec3.fromValues(turtle.x, turtle.y, turtle.z));
-    const block : Block = {
-      id: blockName,
-      x: blockPos[0],
-      y: blockPos[1],
-      z: blockPos[2],
-      is_solid: payload.block.isSolid ? payload.block.isSolid : false,
-      type: payload.block.isPeripheral ? BlockType.PERIPHERAL : BlockType.STATIC
-    }
-    logger.info(`Block inspected: ${block.id} at ${block.x}, ${block.y}, ${block.z}`);
-
-    // update block in world or add new block
-    const world = await getWorld(worldId);
-    if (!world) {
-      logger.error(`World ${worldId} not found`);
-      return wsCommands.pass;
-    }
-    const err = await addOrUpdateBlock(world.id, block);
+    const err = await this.handleBlockUpdate(turtle, direction, payload.block);
     if (err) {
-      logger.error(`Error updating block in world ${worldId} with error ${err}`);
+      logger.error(`Error handling block update: ${err}`);
       return wsCommands.pass;
     }
 
-    logger.info(`Block successfully updated in world ${worldId}`);
+    logger.info(`Block successfully updated in world ${turtle.world_id}`);
     return wsCommands.sync_worlds_with_clients;
   }
 
