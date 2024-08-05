@@ -299,6 +299,7 @@ if not API_KEY or API_KEY == "" or not WORLD_ID or WORLD_ID == "" then
   handle_graceful_socker(ws)
   if not ok then
     log("Error: ", errorMessage)
+    return
   end
 end
 

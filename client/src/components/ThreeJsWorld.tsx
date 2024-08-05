@@ -1,11 +1,10 @@
-import React, { useRef, useEffect } from 'react';
-import { extend, Canvas, useFrame } from '@react-three/fiber';
-import * as THREE from 'three';
 import { OrbitControls } from '@react-three/drei';
-import { EffectComposer, Outline } from '@react-three/postprocessing';
+import { Canvas, extend } from '@react-three/fiber';
+import React, { useEffect, useRef } from 'react';
+import * as THREE from 'three';
 import { UnrealBloomPass } from 'three-stdlib';
 
-import { Block, Machine } from '../context/DataContext';
+import { Block, Machine, useData } from '../context/DataContext';
 
 extend({ UnrealBloomPass });
 
@@ -36,9 +35,9 @@ const BlockMesh: React.FC<{ block: Block }> = ({ block }) => {
   );
 };
 
-const MachineMesh: React.FC<{ machine: Machine }> = ({ machine }) => {
+const MachineMesh: React.FC<{ machine: Machine, color: string }> = ({ machine, color }) => {
   const meshRef = useRef<THREE.Mesh>(null);
-
+  console.log(machine)
   useEffect(() => {
     if (meshRef.current) {
       const { x, y, z } = machine;
@@ -51,7 +50,7 @@ const MachineMesh: React.FC<{ machine: Machine }> = ({ machine }) => {
       ref={meshRef}
     >
       <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color="red" />
+      <meshStandardMaterial color={color} />
     </mesh>
   );
 };
@@ -60,6 +59,7 @@ const MachineMesh: React.FC<{ machine: Machine }> = ({ machine }) => {
 const ThreeJSWorld: React.FC<{ blocks: Block[], machine: Machine }> = ({ blocks, machine }) => {
   const controlsRef = useRef<any>(null);
   const sceneRef = useRef<THREE.Scene>(null);
+  const { machines } = useData();
 
   // Set the target point for the camera
   useEffect(() => {
@@ -84,7 +84,10 @@ const ThreeJSWorld: React.FC<{ blocks: Block[], machine: Machine }> = ({ blocks,
         {blocks.map((block, index) => (
           <BlockMesh key={block.id + "-" + index} block={block} />
         ))}
-        <MachineMesh machine={machine} />
+        {machines.filter(m => m.world_id === machine.world_id).map((m, index) => (
+          <MachineMesh key={m.id + "-" + index} machine={m} color='green' />
+        ))}
+        <MachineMesh machine={machine} color='red' />
       </scene>
     </Canvas>
   );

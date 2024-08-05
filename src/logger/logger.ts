@@ -10,7 +10,7 @@ const myFormat = printf(({ level, message, timestamp, label }) => {
 
 const createTaggedLogger = (tag: string) => {
   return createLogger({
-    levels: winstonConfig.syslog.levels,
+    levels: winstonConfig.cli.levels,
     format: combine(
       colorize(),
       label({ label: tag }),

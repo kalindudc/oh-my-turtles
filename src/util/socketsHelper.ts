@@ -1,3 +1,6 @@
+import winston from "winston";
+import { ClientWebSocket, MachineWebSocket } from "../websockets/wsHandler";
+
 export enum Commands {
   sync_machines_with_clients = 'sync_machines_with_clients',
   sync_machines_with_current_client = 'sync_machines_with_current_client',
@@ -23,4 +26,12 @@ export enum ClientCommands {
 export enum MachineCommands {
   command_result = 'command_result',
   move_inspect = 'move_inspect',
+}
+
+export const sendMessage = (ws: WebSocket | ClientWebSocket | MachineWebSocket, message: string, logger : winston.Logger )  =>  {
+  if (ws.readyState === ws.OPEN) {
+    (ws as WebSocket).send(message);
+  } else {
+    logger.warn(`Websocket not open, cannon send message: ${message}`);
+  }
 }

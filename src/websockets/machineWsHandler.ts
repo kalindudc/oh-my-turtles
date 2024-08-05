@@ -5,10 +5,12 @@ import path from 'path';
 import { config } from '../config';
 import createTaggedLogger from '../logger/logger';
 import { addMachine, Direction, generateMachineID, getMachine, getNewPosition, moveBackward, moveDown, moveForward, moveUp, turnLeft, turnRight, Turtle, updateMachine } from '../models/machine';
-import { addOrUpdateBlock, addWorld, Block, BlockType, getWorld } from '../models/world';
+import { addOrUpdateBlock, addWorld, Block, BlockType, deleteOrIgnoreBlock, getWorld } from '../models/world';
 import { ClientWebSocketHandler } from './clientWsHandler';
-import { ClientCommands, MachineCommands, Commands as wsCommands } from './socketsHelper';
+import { ClientCommands, MachineCommands, sendMessage, Commands as wsCommands } from '../util/socketsHelper';
 import { ClientWebSocket, MachineWebSocket, Message, WebSocketHandler } from './wsHandler';
+import { send } from 'process';
+import { Mutex } from 'async-mutex';
 
 
 const logger = createTaggedLogger(path.basename(__filename));
@@ -16,14 +18,21 @@ const logger = createTaggedLogger(path.basename(__filename));
 const MACHINE_API_KEY = config.machine.apiKey;
 
 export class MachineWebSocketHandler implements WebSocketHandler {
+
   machines: {[key: string]: MachineWebSocket};
+  machineMutex: Mutex;
+
   uninitiatedMachines:{[key: string]: MachineWebSocket};
+  uninitiatedMutex: Mutex;
+
   constructor() {
     this.machines = {};
     this.uninitiatedMachines = {};
+    this.machineMutex = new Mutex();
+    this.uninitiatedMutex = new Mutex();
   }
 
-  registerUninitiated(ws: MachineWebSocket, payload: Message) : string {
+  async registerUninitiated(ws: MachineWebSocket, payload: Message) {
     if (!payload.id) {
       logger.error(`Uninitiated machine id not provided`);
       return wsCommands.pass;
@@ -33,18 +42,26 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     if (payload.payload) {
       ws.type = payload.payload.type;
     }
-    this.uninitiatedMachines[payload.id] = ws;
+    await this.uninitiatedMutex.runExclusive(async () => {
+      if (payload.id) {
+        return this.uninitiatedMachines[payload.id] = ws;
+      }
+      return;
+    });
+
     logger.info(`Uninitiated machine registered`);
     return wsCommands.sync_uninitiated_machines_with_clients;
   }
 
-  unregisterUninitiated(ws: MachineWebSocket) : string {
+  async unregisterUninitiated(ws: MachineWebSocket) {
     const id : string | undefined = Object.keys(this.uninitiatedMachines).find(key => this.uninitiatedMachines[key] === ws)
     if (!id) {
       return wsCommands.pass;
     }
 
-    delete this.uninitiatedMachines[id];
+    await this.uninitiatedMutex.runExclusive(async () => {
+      return delete this.uninitiatedMachines[id];
+    });
     logger.info(`Uninitiated machine unregistered`);
     return wsCommands.sync_uninitiated_machines_with_clients;
   }
@@ -72,7 +89,7 @@ export class MachineWebSocketHandler implements WebSocketHandler {
 
     if (!payload.type || !payload.world_id || !computer_id) {
       // Invalid payload
-      ws.send(JSON.stringify({ type: 'error', message: 'Invalid payload' }));
+      sendMessage(ws, JSON.stringify({ type: 'error', message: 'Invalid payload' }), logger);
       return wsCommands.pass;
     }
 
@@ -94,25 +111,31 @@ export class MachineWebSocketHandler implements WebSocketHandler {
 
     if (err) {
       logger.error(`Cannot register machine ${computer_id}, ${err}`);
-      ws.send(JSON.stringify({type: 'register', success: false, error: err}));
+      sendMessage(ws, JSON.stringify({type: 'register', success: false, error: err}), logger);
       return wsCommands.pass
     }
 
-    this.machines[machine.id] = ws;
     ws.machineId = machine.id;
     ws.type = machine.type;
-    ws.send(JSON.stringify({ type: 'register', id: machine.id, name: machine.name, success: true }));
+    await this.machineMutex.runExclusive(async () => {
+      return this.machines[machine.id] = ws;
+    });
+
+    sendMessage(ws, JSON.stringify({ type: 'register', id: machine.id, name: machine.name, success: true }), logger);
     logger.info(`Machine registered with id: ${id}, machine count: ${Object.keys(this.machines).length}`);
     return wsCommands.sync_machines_with_clients;
   }
 
-  unregister(ws: MachineWebSocket): string {
+  async unregister(ws: MachineWebSocket) {
     const id : string | undefined = Object.keys(this.machines).find(key => this.machines[key] === ws)
     if (!id) {
       return wsCommands.pass;
     }
 
-    delete this.machines[id];
+
+    await this.machineMutex.runExclusive(async () => {
+      return delete this.machines[id];
+    });
     logger.info(`Machine unregistered`);
     return wsCommands.sync_machines_with_clients;
   }
@@ -146,7 +169,7 @@ export class MachineWebSocketHandler implements WebSocketHandler {
       if (origin_initiator && clientHandler.clients[origin_initiator]) {
 
         const ws = clientHandler.clients[origin_initiator];
-        ws.send(JSON.stringify({ type: 'command_result', payload: {command: payload.origin_command, type: "error", error: payload.error} }));
+        sendMessage(ws, JSON.stringify({ type: 'command_result', payload: {command: payload.origin_command, type: "error", error: payload.error} }), logger);
       }
       return wsCommands.pass;
     }
@@ -214,21 +237,23 @@ export class MachineWebSocketHandler implements WebSocketHandler {
 
   async handleBlockUpdate(turtle: Turtle, direction: Direction, block_data: {name? : string, is_solid: boolean, is_peripheral? : boolean}) : Promise<string | null> {
     const worldId = turtle.world_id;
-    if (!block_data.name || !block_data.is_solid) {
-      logger.info(`The block is probably "AIR" or "VOID", ignoring...`);
-      return null;
-    }
-
     const blockName = block_data.name;
     const blockPos = getNewPosition(direction, vec3.fromValues(turtle.x, turtle.y, turtle.z));
     const block : Block = {
-      id: blockName,
+      id: blockName ? blockName : 'minecraft:air',
       x: blockPos[0],
       y: blockPos[1],
       z: blockPos[2],
       is_solid: block_data.is_solid,
       type: block_data.is_peripheral ? BlockType.PERIPHERAL : BlockType.STATIC
     }
+
+    if (!block_data.name || !block_data.is_solid) {
+      logger.info(`The block is probably "AIR" or "VOID"`);
+      await deleteOrIgnoreBlock(worldId, block);
+      return null;
+    }
+
     logger.info(`Block inspected: ${block.id} at ${block.x}, ${block.y}, ${block.z}`);
 
     // update block in world or add new block
@@ -304,14 +329,21 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     return wsCommands.sync_worlds_with_clients;
   }
 
-  async acceptTurtle(id: string, machine: Turtle, data: {cords? : {x : number, y : number, z : number}, facing?: Direction, world_id : string}) : Promise<string | null> {
+  async acceptTurtle(computer_id: string, machine: Turtle, data: {cords? : {x : number, y : number, z : number}, facing?: Direction, world_id : string}) : Promise<string | null> {
     // if machine is already in the db, update it
     if (!data.cords || !data.facing || !data.world_id) {
       logger.error(`Invalid data provided for turtle`);
       return "invalid_input_data";
     }
 
-    const turtle = new Turtle(id, faker.person.firstName(), data.world_id, 0, []);
+    var world = await getWorld(data.world_id);
+    if (!world) {
+      // world does not exist, register it
+      logger.error(`New world added to db with id: ${data.world_id}`);
+      world = await addWorld({ id: data.world_id, name: data.world_id, blocks: [] });
+    }
+
+    const turtle = new Turtle(computer_id, faker.person.firstName(), data.world_id, 0, []);
     turtle.x = data.cords.x;
     turtle.y = data.cords.y;
     turtle.z = data.cords.z;
@@ -326,10 +358,10 @@ export class MachineWebSocketHandler implements WebSocketHandler {
       machine.world_id = turtle.world_id;
 
       await updateMachine(machine);
-      logger.info(`Machine ${id} updated`);
+      logger.info(`Machine ${turtle.id} updated`);
     } else {
       await addMachine(turtle);
-      logger.info(`Machine ${id} accepted`);
+      logger.info(`Machine ${turtle.id} accepted`);
     }
 
     return null;
@@ -352,7 +384,7 @@ export class MachineWebSocketHandler implements WebSocketHandler {
 
     let err = null;
     if (ws.type === 'turtle') {
-      err = await this.acceptTurtle(id, machine as Turtle, data);
+      err = await this.acceptTurtle(computer_id, machine as Turtle, data);
     }
     else {
       err = "invalid_machine_type";
@@ -360,9 +392,12 @@ export class MachineWebSocketHandler implements WebSocketHandler {
 
     if (err) {
       logger.error(`Cannot accept machine ${computer_id}, ${err}`);
-      ws.send(JSON.stringify({type: 'initiate', success: false}));
-      delete this.uninitiatedMachines[computer_id];
-      client.send(JSON.stringify({ type: 'command_error', payload: {command: ClientCommands.initiate_accept_machine, message: err} }));
+      sendMessage(ws, JSON.stringify({type: 'initiate', success: false}), logger);
+
+      await this.uninitiatedMutex.runExclusive(async () => {
+        return delete this.uninitiatedMachines[computer_id];
+      });
+      sendMessage(client, JSON.stringify({ type: 'command_error', payload: {command: ClientCommands.initiate_accept_machine, message: err} }), logger);
       return wsCommands.sync_uninitiated_machines_with_clients
     }
 
@@ -373,20 +408,25 @@ export class MachineWebSocketHandler implements WebSocketHandler {
       world_id: data.world_id
     }
 
-    ws.send(JSON.stringify(toSend));
-    delete this.uninitiatedMachines[computer_id];
+    sendMessage(ws, JSON.stringify(toSend), logger);
+    await this.uninitiatedMutex.runExclusive(async () => {
+      return delete this.uninitiatedMachines[computer_id];
+    });
     return wsCommands.sync_uninitiated_machines_with_clients
   }
 
-  rejectMachine(id: string) {
+  async rejectMachine(id: string) {
     if (!this.uninitiatedMachines[id]) {
       logger.info(`Machine ${id} does not exist in uninitiated machines`);
       return wsCommands.pass;
     }
 
     const ws = this.uninitiatedMachines[id];
-    ws.send("REJECTED");
-    delete this.uninitiatedMachines[id];
+    sendMessage(ws, JSON.stringify({type: 'initiate', success: false}), logger);
+
+    await this.uninitiatedMutex.runExclusive(async () => {
+      return delete this.uninitiatedMachines[id];
+    });
     logger.info(`Machine ${id} rejected`);
     return wsCommands.sync_uninitiated_machines_with_clients
   }
@@ -398,7 +438,7 @@ export class MachineWebSocketHandler implements WebSocketHandler {
     }
 
     const ws = this.machines[machine_id];
-    ws.send(JSON.stringify({ type: 'command', command: command, initiated_client: clientControllerUsername }));
+    sendMessage(ws, JSON.stringify({ type: 'command', command: command, initiated_client: clientControllerUsername }), logger);
     return wsCommands.sync_machines_with_clients;
   }
 };

@@ -1,6 +1,7 @@
 import { vec3 } from 'gl-matrix';
-
 import { JsonDB, Config } from 'node-json-db';
+import { Mutex } from 'async-mutex';
+
 import { Item, World } from './world';
 import { config } from '../config';
 
@@ -156,13 +157,15 @@ export class Turtle implements Machine {
   }
 }
 
-const dbMachine = new JsonDB(new Config(config.database.machines.path, true, false, '/'));
+const db = new JsonDB(new Config(config.database.machines.path, true, false, '/'));
+const writeMutex = new Mutex();
+
 
 export async function initializeMachineDB() {
   try {
-    var data = await dbMachine.getData("/");
+    var data = await db.getData("/");
     if (!data.machines) {
-      dbMachine.push("/",  { machines: [] });
+      db.push("/",  { machines: [] });
     }
   } catch(error) {
       console.error(error);
@@ -170,25 +173,32 @@ export async function initializeMachineDB() {
 }
 
 export async function getMachines() {
-  return await dbMachine.getData("/machines");
+  return await db.getData("/machines");
 }
 
 export async function getMachine(id: string) {
-  return (await dbMachine.getData("/machines")).find((machine: Machine) => machine.id === id);
+  return (await db.getData("/machines")).find((machine: Machine) => machine.id === id);
 }
 
 export async function addMachine(newMachine: Machine) {
-  await dbMachine.push("/machines[]", newMachine);
+  return await writeMutex.runExclusive(async () => {
+    return await db.push("/machines[]", newMachine);
+  });
   return newMachine;
 }
 
 export async function updateMachine(updatedMachine: Machine) {
-  const machineIndex = await dbMachine.getIndex("/machines", updatedMachine.id);
-  await dbMachine.push(`/machines[${machineIndex}]`, updatedMachine);
+  const machineIndex = await db.getIndex("/machines", updatedMachine.id);
+  await writeMutex.runExclusive(async () => {
+    return await db.push(`/machines[${machineIndex}]`, updatedMachine);
+  });
   return updatedMachine;
 }
 
 export async function deleteMachine(id: string) {
-  const machineIndex = await dbMachine.getIndex("/machines", id);
-  return await dbMachine.delete(`/machines[${machineIndex}]`);
+  const machineIndex = await db.getIndex("/machines", id);
+
+  return await writeMutex.runExclusive(async () => {
+    return await db.delete(`/machines[${machineIndex}]`);
+  });
 }

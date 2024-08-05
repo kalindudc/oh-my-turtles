@@ -1,5 +1,6 @@
 import { JsonDB, Config } from 'node-json-db';
 import bcrypt from 'bcrypt';
+import { Mutex } from 'async-mutex';
 
 import { config } from '../config';
 
@@ -9,6 +10,7 @@ export type User = {
 };
 
 const db = new JsonDB(new Config(config.database.users.path, true, false, '/'));
+const writeMutex = new Mutex();
 
 export async function initializeUserDB() {
   try {
@@ -30,8 +32,10 @@ export async function getUser(id: string) {
 }
 
 export async function addUser(user: User) {
-  await db.push("/users[]", user);
-  return user;
+  await writeMutex.runExclusive(async () => {
+    return await db.push("/users[]", user);
+  });
+  return user
 }
 
 export const hashPassword = async (password: string) => {
@@ -60,5 +64,7 @@ export async function deleteUser(id: string) {
     return;
   }
 
-  return db.delete(`/users[${index}]`);
+  return writeMutex.runExclusive(async () => {
+    return db.delete(`/users[${index}]`);
+  });
 }

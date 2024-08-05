@@ -7,9 +7,10 @@ import { config } from '../config';
 import createTaggedLogger from '../logger/logger';
 import { ClientWebSocketHandler, isClientAuthorized } from './clientWsHandler';
 import { MachineWebSocketHandler } from './machineWsHandler';
-import { Commands } from './socketsHelper';
+import { Commands } from '../util/socketsHelper';
 import { randomUUID } from 'crypto';
 import { addTask } from '../util/taskQueue';
+import winston from 'winston';
 
 const logger = createTaggedLogger(path.basename(__filename));
 
@@ -20,7 +21,7 @@ const socketMap : Map<string, WebSocket> = new Map();
 
 export interface WebSocketHandler {
   register(ws: ClientWebSocket, message: Message) : Promise<string>;
-  unregister(ws: ClientWebSocket) : string;
+  unregister(ws: ClientWebSocket) : Promise<string>;
   data(ws: ClientWebSocket, message: Message, handler: ClientWebSocketHandler | MachineWebSocketHandler) : Promise<string>;
 }
 
@@ -106,17 +107,17 @@ export const handleWebSocket = (ws: ClientWebSocket, req: http.IncomingMessage) 
       logger.error('Error parsing message:', error);
       return;
     }
-    addTask(messageQueue, () => processMessage(parsedMessage, ws.id, () => {}));
+    addTask(messageQueue, () => processMessage(parsedMessage, ws.id, logger, () => {}));
   });
 
   ws.on('close', () => {
     logger.info('Client or Machine disconnecting...');
 
-    addTask(messageQueue, async () => await processMessage({type: 'close'}, ws.id, () => {}));
+    addTask(messageQueue, async () => await processMessage({type: 'close'}, ws.id, logger, () => {}));
   });
 };
 
-const processCommand = async (command: string, ws: ClientWebSocket, message: Message, clientHandler: ClientWebSocketHandler, machineHandler: MachineWebSocketHandler) => {
+const processCommand = async (command: string, ws: ClientWebSocket, message: Message, clientHandler: ClientWebSocketHandler, machineHandler: MachineWebSocketHandler, done: Function) => {
   if (!command) {
     return;
   }
@@ -128,6 +129,7 @@ const processCommand = async (command: string, ws: ClientWebSocket, message: Mes
 
     case Commands.sync_uninitiated_machines_with_clients:
       clientHandler.syncUninitiatedMachinesWithClients(machineHandler.uninitiatedMachines);
+      clientHandler.syncWorldsWithClients();
       break;
 
     case Commands.sync_machines_with_current_client:
@@ -144,10 +146,13 @@ const processCommand = async (command: string, ws: ClientWebSocket, message: Mes
     default:
       logger.info(`Unknown command: ${command}`);
   }
+
+  logger.info(`Command processed: ${command}, done`);
+  done();
 };
 
 
-const processMessage = async (parsedMessage:any, wsId:string | undefined, done : Function) => {
+const processMessage = async (parsedMessage:any, wsId:string | undefined, logger: winston.Logger, done : Function) => {
   if (!wsId) {
     logger.error('No websocket id provided');
     return;
@@ -163,18 +168,19 @@ const processMessage = async (parsedMessage:any, wsId:string | undefined, done :
   if (parsedMessage.type === 'initiate') {
     logger.info('Initiating machine...');
     commandToProcess = await machineHandler.registerUninitiated(ws, parsedMessage);
-    await processCommand(commandToProcess, ws, parsedMessage, clientHandler, machineHandler);
+    addTask(commandQueue, async () => await processCommand(commandToProcess, ws, parsedMessage, clientHandler, machineHandler, () => {}));
     return;
   }
 
   if (parsedMessage.type === 'close') {
     logger.info('Closing connection...');
-    clientHandler.unregister(ws);
-    machineHandler.unregister(ws);
-    machineHandler.unregisterUninitiated(ws);
+    await clientHandler.unregister(ws);
+    await machineHandler.unregister(ws);
+    await machineHandler.unregisterUninitiated(ws);
 
-    await processCommand(Commands.sync_machines_with_clients, ws, parsedMessage, clientHandler, machineHandler);
-    socketMap.delete(wsId);
+    addTask(commandQueue, async () => await processCommand(Commands.sync_machines_with_clients, ws, parsedMessage, clientHandler, machineHandler, () => {
+      socketMap.delete(wsId);
+    }));
     return;
   }
 
@@ -219,7 +225,7 @@ const processMessage = async (parsedMessage:any, wsId:string | undefined, done :
       logger.warn('Unknown message type');
   }
 
-  addTask(commandQueue, async () => await processCommand(commandToProcess, ws, parsedMessage, clientHandler, machineHandler));
+  addTask(commandQueue, async () => await processCommand(commandToProcess, ws, parsedMessage, clientHandler, machineHandler, () => {}));
   done();
 }
 

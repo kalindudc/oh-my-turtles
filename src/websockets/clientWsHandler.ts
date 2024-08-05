@@ -1,10 +1,11 @@
 import path from 'path';
+import { Mutex } from 'async-mutex';
 
 import createTaggedLogger from '../logger/logger';
 import { getMachines, Machine } from '../models/machine';
 import { getWorlds } from '../models/world';
 import { MachineWebSocketHandler } from './machineWsHandler';
-import { ClientCommands as Commands, Commands as wsCommands } from './socketsHelper';
+import { ClientCommands as Commands, sendMessage, Commands as wsCommands } from '../util/socketsHelper';
 import { ClientWebSocket, MachineWebSocket, Message, WebSocketHandler } from './wsHandler';
 
 const logger = createTaggedLogger(path.basename(__filename));
@@ -43,8 +44,10 @@ export const isClientAuthorized = (apiKey: string | undefined) => {
 export class ClientWebSocketHandler implements WebSocketHandler {
 
   clients: { [key: string]: ClientWebSocket };
+  clientsMutex: Mutex;
   constructor() {
     this.clients = {};
+    this.clientsMutex = new Mutex();
   }
 
   async register(ws: ClientWebSocket, message: Message) {
@@ -54,19 +57,28 @@ export class ClientWebSocketHandler implements WebSocketHandler {
     }
 
     ws.username = message.id;
-    this.clients[message.id] = ws;
+    await this.clientsMutex.runExclusive(async () => {
+      if (message.id){
+        this.clients[message.id] = ws;
+      }
+      return;
+    });
+
     logger.info(`Client registered with id: ${message.id}`);
-    ws.send(JSON.stringify({ type: 'register', id: message.id }));
+    sendMessage(ws, JSON.stringify({ type: 'register', id: message.id }), logger);
     return wsCommands.sync_machines_with_current_client;
   }
 
-  unregister(ws: ClientWebSocket) {
+  async unregister(ws: ClientWebSocket) {
     const id : string | undefined = Object.keys(this.clients).find(key => this.clients[key] === ws)
     if (!id) {
       return wsCommands.pass;
     }
 
-    delete this.clients[id];
+    await this.clientsMutex.runExclusive(async () => {
+      delete this.clients[id];
+      return;
+    });
     logger.info(`Client ${id} unregistered`);
     return wsCommands.pass;
   }
@@ -104,7 +116,7 @@ export class ClientWebSocketHandler implements WebSocketHandler {
         return newCommand;
 
       case Commands.initiate_reject_machine:
-        newCommand = machineHandler.rejectMachine(payload.machine_id);
+        newCommand = await machineHandler.rejectMachine(payload.machine_id);
         logger.info(`Machine ${payload.machine_id} rejected by ${username}`);
         return newCommand;
 
@@ -144,7 +156,7 @@ export class ClientWebSocketHandler implements WebSocketHandler {
           world_id: machine.world_id
         };
       });
-      ws.send(JSON.stringify({ type: 'sync_machines', machines: updatedMachines }));
+      sendMessage(ws, JSON.stringify({ type: 'sync_machines', machines: updatedMachines }), logger);
     });
   }
 
@@ -167,7 +179,7 @@ export class ClientWebSocketHandler implements WebSocketHandler {
         };
       });
       Object.keys(this.clients).forEach((key) => {
-        this.clients[key].send(JSON.stringify({ type: 'sync_machines', machines: updatedMachines }));
+        sendMessage(this.clients[key], JSON.stringify({ type: 'sync_machines', machines: updatedMachines }), logger);
       });
     });
   }
@@ -178,14 +190,14 @@ export class ClientWebSocketHandler implements WebSocketHandler {
     });
 
     Object.keys(this.clients).forEach((key) => {
-      this.clients[key].send(JSON.stringify({ type: 'sync_uninitiated', machines: uninitiatedMachines }));
+      sendMessage(this.clients[key], JSON.stringify({ type: 'sync_uninitiated', machines: uninitiatedMachines }), logger);
     });
   }
 
   syncWorldsWithClients() {
     getWorlds().then((worlds) => {
       Object.keys(this.clients).forEach((key) => {
-        this.clients[key].send(JSON.stringify({ type: 'sync_worlds', worlds: worlds }));
+        sendMessage(this.clients[key], JSON.stringify({ type: 'sync_worlds', worlds: worlds }), logger);
       });
     });
   }

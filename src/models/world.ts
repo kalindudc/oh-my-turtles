@@ -1,4 +1,5 @@
 import { JsonDB, Config } from 'node-json-db';
+import { Mutex } from 'async-mutex';
 
 import { config } from '../config';
 
@@ -28,13 +29,14 @@ export type World = {
   blocks: Array<Block>;
 }
 
-const dbWorld = new JsonDB(new Config(config.database.worlds.path, true, false, '/'));
+const db = new JsonDB(new Config(config.database.worlds.path, true, false, '/'));
+const writeMutex = new Mutex();
 
 export async function initializeWorldDB() {
   try {
-    var data = await dbWorld.getData("/");
+    var data = await db.getData("/");
     if (!data.worlds) {
-      dbWorld.push("/",  { worlds: [] });
+      db.push("/",  { worlds: [] });
     }
   } catch(error) {
       console.error(error);
@@ -42,46 +44,66 @@ export async function initializeWorldDB() {
 }
 
 export async function getWorlds() {
-  return await dbWorld.getData("/worlds");
+  return await db.getData("/worlds");
 }
 
 export async function getWorld(id: string) {
-  return (await dbWorld.getData("/worlds")).find((world: World) => world.id === id);
+  return (await db.getData("/worlds")).find((world: World) => world.id === id);
 }
 
 export async function addWorld(newWorld: { id: string; name: string, blocks: Array<Block> }) {
-  await dbWorld.push("/worlds[]", newWorld);
+  await writeMutex.runExclusive(async () => {
+    return await db.push("/worlds[]", newWorld);
+  });
   return newWorld;
 }
 
 async function addBlock(worldIndex: number, block: Block) {
-  await dbWorld.push(`/worlds[${worldIndex}]/blocks[]`, block);
+  await writeMutex.runExclusive(async () => {
+    return await db.push(`/worlds[${worldIndex}]/blocks[]`, block);
+  });
   return block;
 }
 
 async function updateBlock(worldIndex: number, blockIndex: number, updatedBlock: Block) {
-  await dbWorld.push(`/worlds[${worldIndex}]/blocks[${blockIndex}]`, updatedBlock);
+  await writeMutex.runExclusive(async () => {
+    return await db.push(`/worlds[${worldIndex}]/blocks[${blockIndex}]`, updatedBlock);
+  });
   return updatedBlock;
 }
 
-export async function deleteBlock(worldId: string, blockId: string) {
-  const worldIndex = await dbWorld.getIndex("/worlds", worldId);
-  const blockIndex = await dbWorld.getIndex(`/worlds[${worldIndex}]/blocks`, blockId);
-  return await dbWorld.delete(`/worlds[${worldIndex}]/blocks[${blockIndex}]`);
+export async function deleteBlock(worldIndex: number, blockIndex: number) {
+  return await writeMutex.runExclusive(async () => {
+    return await db.delete(`/worlds[${worldIndex}]/blocks[${blockIndex}]`);
+  });
 }
 
 export async function addOrUpdateBlock(world_id: string, block: Block) : Promise<string | undefined> {
-  const worldIndex = await dbWorld.getIndex("/worlds", world_id);
+  const worldIndex = await db.getIndex("/worlds", world_id);
   if (worldIndex === -1) {
     return "World not found";
   }
 
-  const blocks = await dbWorld.getData(`/worlds[${worldIndex}]/blocks`);
+  const blocks = await db.getData(`/worlds[${worldIndex}]/blocks`);
   const blockIndex = blocks.findIndex((b: Block) => b.x === block.x && b.y === block.y && b.z === block.z);
   if (blockIndex === -1) {
     await addBlock(worldIndex, block);
   } else {
     await updateBlock(worldIndex, blockIndex, block);
+  }
+  return;
+}
+
+export async function deleteOrIgnoreBlock(world_id: string, block: Block) : Promise<string | undefined> {
+  const worldIndex = await db.getIndex("/worlds", world_id);
+  if (worldIndex === -1) {
+    return "World not found";
+  }
+
+  const blocks = await db.getData(`/worlds[${worldIndex}]/blocks`);
+  const blockIndex = blocks.findIndex((b: Block) => b.x === block.x && b.y === block.y && b.z === block.z);
+  if (blockIndex !== -1) {
+    await deleteBlock(worldIndex, blockIndex);
   }
   return;
 }
