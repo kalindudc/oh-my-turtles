@@ -2,14 +2,15 @@ import React from 'react';
 import { Box, Button, Typography } from '@mui/material';
 import { Machine, useData } from '../context/DataContext';
 import TurtleHUD from './huds/TurtleHUD';
-import ThreeJSWorld from './ThreeJsWorld';
+import ThreeJSWorld from './three_js/ThreeJsWorld';
 
 interface MachineComponentProps {
   machineID: string;
   ws: WebSocket | null;
+  onSelect: (machine: Machine) => void;
 }
 
-const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) => {
+const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws, onSelect }) => {
   const { machines, worlds } = useData();
   const machine = machines.find((m: Machine) => m.id === machineID) || {
     id: '',
@@ -49,7 +50,7 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws }) =>
           justifyContent: 'center',
         }}
       >
-        <ThreeJSWorld blocks={world.blocks} machine={machine} />
+        <ThreeJSWorld blocks={world.blocks} machine={machine} onSelect={onSelect} />
       </Box>
 
 

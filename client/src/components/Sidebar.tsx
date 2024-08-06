@@ -1,16 +1,15 @@
+import { Check, Clear, Pets, Public, QuestionMark, SmartToy, Wifi, WifiOff } from '@mui/icons-material';
+import { Box, IconButton, List, ListItem, ListItemButton, ListItemText, Tooltip } from '@mui/material';
 import React, { useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, ListItem, Tooltip, IconButton } from '@mui/material';
-import { Check, Clear, QuestionMark, Pets, SmartToy, WifiOff, Wifi, Public } from '@mui/icons-material';
 
-import ExpandableListItem from './ExpandableListItem';
-import { useData, Machine, UninitiatedMachine } from '../context/DataContext';
-import { capitalize } from '../utils/functions';
-import SendMessageIconButton from './SendMessageIconButton';
-import { CommandsSent, createClientPayload, useWebSocket } from '../context/WebSocketContext'
 import { useUser } from '../context/AuthContext';
+import { Machine, UninitiatedMachine, useData } from '../context/DataContext';
+import { CommandsSent, createClientPayload, useWebSocket } from '../context/WebSocketContext';
+import { FacingDirection } from '../enums/DirectionEnum';
+import { capitalize } from '../utils/functions';
 import CoordinateDialog from './CoordinateDialog';
-import { Direction } from '../enums/DirectionEnum';
-import { send } from 'process';
+import ExpandableListItem from './ExpandableListItem';
+import SendMessageIconButton from './SendMessageIconButton';
 
 
 interface SidebarProps {
@@ -35,7 +34,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onSelect }) => {
     setSelectedMachine(null);
   };
 
-  const handleDialogSubmit = (x: number, y: number, z: number, direction: Direction, worldID: string) => {
+  const handleDialogSubmit = (x: number, y: number, z: number, direction: FacingDirection, worldID: string) => {
     if (selectedMachine) {
       const payload = createClientPayload({
         command: CommandsSent.initiate_accept_machine,
