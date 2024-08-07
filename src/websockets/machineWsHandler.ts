@@ -254,6 +254,13 @@ export class MachineWebSocketHandler implements WebSocketHandler {
       return null;
     }
 
+    // if it is tallgrass or shortgrass do not add
+    if (block.id === 'minecraft:tall_grass' || block.id === 'minecraft:short_grass') {
+      logger.info(`The block is probably "TALLGRASS" or "GRASS"`);
+      await deleteOrIgnoreBlock(worldId, block);
+      return null;
+    }
+
     logger.info(`Block inspected: ${block.id} at ${block.x}, ${block.y}, ${block.z}`);
 
     // update block in world or add new block

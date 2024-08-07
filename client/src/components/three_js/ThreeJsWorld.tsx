@@ -1,18 +1,19 @@
 import { OrbitControls } from '@react-three/drei';
-import { Canvas, extend } from '@react-three/fiber';
+import { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { UnrealBloomPass } from 'three-stdlib';
 
 import { Block, Machine, useData } from '../../context/DataContext';
-import { Direction, DirectionToVector } from '../../enums/DirectionEnum';
+import { Direction, DirectionToVector, FacingDirection } from '../../enums/DirectionEnum';
 import DirectionIndicator from './DirectionIndicator';
 
 extend({ UnrealBloomPass });
 
 const glowMaterial = new THREE.MeshBasicMaterial({
   color: new THREE.Color('white').convertSRGBToLinear(), // Glow color
-  opacity: 0.0, // Start with no opacity
+  opacity: 0.08,
   transparent: true,
 });
 
@@ -47,23 +48,26 @@ const MachineMesh: React.FC<{ machine: Machine, color: string, shouldDrawDirecti
   const glowRef = useRef<THREE.Mesh>(null);
   const [direction, setDirection] = useState<THREE.Vector3 | null>(null);
   const [hovered, setHovered] = useState(false);
+  const [targetPosition, setTargetPosition] = useState(new THREE.Vector3(machine.x, machine.y, machine.z));
 
   useEffect(() => {
-    if (meshRef.current) {
-      const { x, y, z } = machine;
-      meshRef.current.position.set(x, y, z);
-      const directionVector = machine.facing ? DirectionToVector.getVector(machine.facing as Direction) : null;
-      setDirection(directionVector);
-    }
+    setTargetPosition(new THREE.Vector3(machine.x, machine.y, machine.z));
+    const directionVector = machine.facing ? DirectionToVector.getVector(machine.facing as Direction) : null;
+    setDirection(directionVector);
   }, [machine]);
 
-  useEffect(() => {
-    if (!hovered) {
-      glowMaterial.opacity = 0.08;
-    } else {
-      glowMaterial.opacity = 0;
+  useFrame(() => {
+    if (meshRef.current) {
+      meshRef.current.position.lerp(targetPosition, 0.5);
     }
-  }, [hovered]);
+  });
+
+  // Instantly update the position target and color when the machine prop changes
+  useEffect(() => {
+    if (meshRef.current) {
+      meshRef.current.material = new THREE.MeshStandardMaterial({ color });
+    }
+  }, [color]);
 
   const handleClick = () => {
     if (onClick) {
@@ -92,7 +96,7 @@ const MachineMesh: React.FC<{ machine: Machine, color: string, shouldDrawDirecti
       {hovered && (
         <mesh
           ref={glowRef}
-          position={new THREE.Vector3(machine.x, machine.y, machine.z)}
+          position={new THREE.Vector3(meshRef.current?.position.x, meshRef.current?.position.y, meshRef.current?.position.z)}
         >
           <boxGeometry args={[1.2, 1.2, 1.2]} />
           <meshBasicMaterial {...glowMaterial} />
@@ -102,39 +106,53 @@ const MachineMesh: React.FC<{ machine: Machine, color: string, shouldDrawDirecti
   );
 };
 
-// Main ThreeJSWorld component
-const ThreeJSWorld: React.FC<{ blocks: Block[], machine: Machine, onSelect: (machine: Machine) => void }> = ({ blocks, machine, onSelect }) => {
-  const controlsRef = useRef<any>(null);
-  const sceneRef = useRef<THREE.Scene>(null);
-  const { machines } = useData();
 
-  // Set the target point for the camera
+const CameraController: React.FC<{ machine: Machine, isFollowing : boolean }> = ({ machine, isFollowing }) => {
+  const controlsRef = useRef<OrbitControlsImpl>(null);
+  const [cameraPosition, setCameraPosition] = useState(new THREE.Vector3(machine.x, machine.y, machine.z));
+  const [facing, setFacing] = useState(DirectionToVector.getVector(machine.facing as Direction).multiplyScalar(6));
+
   useEffect(() => {
+    setCameraPosition(new THREE.Vector3(machine.x, machine.y, machine.z));
+
+    const currentDirection = DirectionToVector.getVector(machine.facing as Direction);
+    setFacing(currentDirection.multiplyScalar(6));
+  }, [machine]);
+
+  useFrame(() => {
     if (controlsRef.current) {
-      controlsRef.current.target.set(machine.x, machine.y, machine.z);
+      controlsRef.current.target.lerp(cameraPosition, 0.1);
+
+      if (isFollowing) {
+        const followPositon = new THREE.Vector3(cameraPosition.x, cameraPosition.y + 6, cameraPosition.z).sub(facing);
+        controlsRef.current.object.position.lerp(followPositon, 0.1);
+      }
+      controlsRef.current.update();
     }
-  }, [blocks, machine]);
+  });
+
+  return <OrbitControls ref={controlsRef} enableZoom={true} enablePan={false} />;;
+};
+
+// Main ThreeJSWorld component
+const ThreeJSWorld: React.FC<{ blocks: Block[], machine: Machine, onSelect: (machine: Machine) => void, isFollowing : boolean }> = ({ blocks, machine, onSelect, isFollowing }) => {
+  const { machines } = useData();
+  const sceneRef = useRef<THREE.Scene>(null);
 
   return (
-    <Canvas
-      camera={{
-        position: [machine.x, machine.y - 10, machine.z - 10],
-        fov: 75,
-        near: 0.1,
-        far: 1000
-      }}
-    >
+    <Canvas>
       <scene ref={sceneRef}>
         <ambientLight />
         <pointLight position={[machine.x, machine.y, machine.z]} />
-        <OrbitControls ref={controlsRef} enableZoom={true} enablePan={false} target={[machine.x, machine.y, machine.z]} />
+        <CameraController machine={machine} isFollowing={isFollowing} />
+
         {blocks.map((block, index) => (
           <BlockMesh key={block.id + "-" + index} block={block} />
         ))}
         {machines.filter(m => m.world_id === machine.world_id).map((m, index) => (
           <MachineMesh key={m.id + "-" + index} machine={m} color='green' shouldDrawDirection={false} onClick={onSelect} />
         ))}
-        <MachineMesh machine={machine} color='red' shouldDrawDirection={true} onClick={()=>{}} />
+        <MachineMesh machine={machine} color='red' shouldDrawDirection={true} onClick={() => {}} />
       </scene>
     </Canvas>
   );

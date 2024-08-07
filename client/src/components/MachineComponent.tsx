@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Button, Typography } from '@mui/material';
 import { Machine, useData } from '../context/DataContext';
 import TurtleHUD from './huds/TurtleHUD';
@@ -12,6 +12,8 @@ interface MachineComponentProps {
 
 const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws, onSelect }) => {
   const { machines, worlds } = useData();
+  const [isFollowing, setIsFollowing] = useState(false);
+
   const machine = machines.find((m: Machine) => m.id === machineID) || {
     id: '',
     name: 'INVALID___',
@@ -30,7 +32,7 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws, onSe
   const renderHUD = () => {
     switch (machine.type) {
       case 'turtle':
-        return <TurtleHUD machine={machine} ws={ws} />;
+        return <TurtleHUD machine={machine} ws={ws} setIsFollowing={setIsFollowing} />;
 
       default:
         return null;
@@ -50,7 +52,7 @@ const MachineComponent: React.FC<MachineComponentProps> = ({ machineID, ws, onSe
           justifyContent: 'center',
         }}
       >
-        <ThreeJSWorld blocks={world.blocks} machine={machine} onSelect={onSelect} />
+        <ThreeJSWorld blocks={world.blocks} machine={machine} onSelect={onSelect} isFollowing={isFollowing} />
       </Box>
 
 

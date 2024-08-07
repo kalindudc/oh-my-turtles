@@ -12,7 +12,9 @@ import {
   Delete,
   Add,
   Hardware,
-  Close
+  Close,
+  PlayArrow,
+  Stop,
 } from '@mui/icons-material';
 
 import { Machine } from '../../context/DataContext';
@@ -26,13 +28,15 @@ import { parse } from 'path';
 interface TurtleHUDProps {
   machine: Machine;
   ws: WebSocket | null;
+  setIsFollowing: (isFollowing: boolean) => void;
 }
 
-const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
+const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws, setIsFollowing }) => {
   const [messages, setMessages] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const { sendMessage } = useWebSocket();
   const { user } = useUser();
+  const [toggle, setToggle] = useState(false);
 
   const sendCommand = (command : string) => {
     const payload = createClientPayload({command : command, machine_id : machine.id}, user?.api_key);
@@ -48,6 +52,11 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
   const removeNotification = (id: number) => {
     setNotifications((prevNotifications) => prevNotifications.filter((notification) => notification.id !== id));
   };
+
+  const handleToggle = () => {
+    setToggle(!toggle);
+    setIsFollowing(!toggle);
+  }
 
   useEffect(() => {
     if (!ws) {
@@ -81,7 +90,8 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
     };
   }, [ws]);
 
-  const renderControlButtonGroup = (group: Array<{command: string, title: string, icon: React.ReactNode,} | null>, color : "inherit" | "error" | "info" | "primary" | "secondary" | "success" | "warning" | undefined, width? : string) => {
+  const renderControlButtonGroup = (group: Array<{command: string, title: string, icon: React.ReactNode, run?: Function} | null>, color : "inherit" | "error" | "info" | "primary" | "secondary" | "success" | "warning" | undefined, width? : string) => {
+
     const minWidth = width ? width : "50px";
     return (
       <Box component="div"
@@ -98,14 +108,20 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
             return (
               <Tooltip title={button.title} placement="top-start" disableInteractive followCursor key={"group-" + index}>
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   color={color}
                   sx={{
                     minWidth: {minWidth},
                     width: '100%',
                     height: '50px',
                   }}
-                  onClick={() => sendCommand(button.command)}
+                  onClick={() => {
+                    if (button.run) {
+                      button.run();
+                    } else {
+                      sendCommand(button.command);
+                    }
+                  }}
                 >
                   {button.icon}
                 </Button>
@@ -216,6 +232,16 @@ const TurtleHUD: React.FC<TurtleHUDProps> = ({ machine, ws }) => {
             justifyContent="center"
             alignItems="center"
           >
+            {renderControlButtonGroup([
+              null,
+              {
+                command: "run_custom_func",
+                run: () => {handleToggle()},
+                title: toggle ? "Stop Following" : "Follow Turtle",
+                icon: toggle ? <Stop /> : <PlayArrow />,
+              },
+              null,
+            ], toggle ? "error" : "success")}
             {renderControlButtonGroup([
               null,
               {

@@ -25,7 +25,7 @@ export class DirectionToVector {
   static readonly down = new THREE.Vector3(0, -1, 0);
 
   static getVector(direction: Direction) {
-    return this[direction];
+    return this[direction].clone();
   }
 
   private constructor(private readonly key: string, public readonly value: any) {
