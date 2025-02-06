@@ -4,10 +4,12 @@ import { Canvas, extend, useFrame, useThree } from '@react-three/fiber';
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { UnrealBloomPass } from 'three-stdlib';
+import { Html } from '@react-three/drei';
 
 import { Block, Machine, useData } from '../../context/DataContext';
 import { Direction, DirectionToVector, FacingDirection } from '../../enums/DirectionEnum';
 import DirectionIndicator from './DirectionIndicator';
+import { useRaycast } from '../../hooks/useRaycast';
 
 extend({ UnrealBloomPass });
 
@@ -20,6 +22,13 @@ const glowMaterial = new THREE.MeshBasicMaterial({
 // Component to render each block
 const BlockMesh: React.FC<{ block: Block }> = ({ block }) => {
   const meshRef = useRef<THREE.Mesh>(null);
+  const glowRef = useRef<THREE.Mesh>(null);
+  const [hovered, setHovered] = useState(false);
+  const [drawInfo, setDrawInfo] = useState(false);
+  const windowRef = useRef(window);
+  const { camera, gl } = useThree();
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
 
   useEffect(() => {
     if (meshRef.current) {
@@ -28,18 +37,63 @@ const BlockMesh: React.FC<{ block: Block }> = ({ block }) => {
     }
   }, [block]);
 
+  const handleMouseMove = (event: MouseEvent) => {
+    console.log('mouse move', block);
+    if (!meshRef.current) return;
+
+    mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+    mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+    raycaster.setFromCamera( mouse.clone(), camera );
+
+    const intersect = raycaster.intersectObjects(meshRef.current?.children, true);
+    if (intersect.length > 0) {
+      setDrawInfo(true);
+    } else {
+      setDrawInfo(false);
+    }
+  };
+
+  const handlePointerOver = () => {
+    windowRef.current.addEventListener('mousemove', handleMouseMove);
+    setHovered(true);
+  };
+  const handlePointerOut = () => {
+    windowRef.current.removeEventListener('mousemove', handleMouseMove);
+    setHovered(false);
+  }
+
   const materialProps =
     block.id === 'minecraft:air'
       ? { color: '#fff', transparent: true, opacity: 0.2 }
       : { color: block.is_solid ? 'grey' : 'blue' };
 
   return (
-    <mesh
-      ref={meshRef}
-    >
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial {...materialProps} />
-    </mesh>
+    <>
+      <mesh
+        ref={meshRef}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      >
+        <boxGeometry args={[1, 1, 1]} />
+        <meshStandardMaterial {...materialProps} />
+      </mesh>
+      {drawInfo && (
+        <mesh
+          ref={glowRef}
+          position={new THREE.Vector3(meshRef.current?.position.x, meshRef.current?.position.y, meshRef.current?.position.z)}
+        >
+          <boxGeometry args={[1.01, 1.01, 1.01]} />
+          <meshBasicMaterial {...glowMaterial} />
+        </mesh>
+      )}
+      {drawInfo && (
+        <Html position={[block.x, block.y + 1, block.z]} distanceFactor={10}>
+          <div className="info-label">
+            {block.id} - {block.is_solid ? 'Solid' : 'Not Solid'}
+          </div>
+        </Html>
+      )}
+    </>
   );
 };
 
